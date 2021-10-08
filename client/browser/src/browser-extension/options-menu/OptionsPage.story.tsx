@@ -23,7 +23,7 @@ const commonProps = () =>
             { key: 'experimentalLinkPreviews', label: 'Experimental link previews', value: false },
         ],
         version: text('version', '0.0.0'),
-        onChangeSourcegraphUrl: action('onChangeSourcegraphUrl'),
+        onSelfHostedSourcegraphURLChange: action('onSelfHostedSourcegraphURLChange'),
     })
 
 const requestPermissionsHandler = action('requestPermission')
@@ -41,7 +41,7 @@ storiesOf('browser/Options/OptionsPage', module)
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}
-            sgURLs={[{ url: text('sourcegraphUrl', 'https://sourcegraph.com') }]}
+            selfHostedSourcegraphURL={text('sourcegraphUrl', 'https://sourcegraph.com')}
             isFullPage={true}
         />
     ))
@@ -53,7 +53,7 @@ storiesOf('browser/Options/OptionsPage', module)
                 isActivated={isActivated}
                 onToggleActivated={setIsActivated}
                 validateSourcegraphUrl={validateSourcegraphUrl}
-                sgURLs={text('sourcegraphUrl', 'https://sourcegraph.com')}
+                selfHostedSourcegraphURL={text('sourcegraphUrl', 'https://sourcegraph.com')}
                 showPrivateRepositoryAlert={boolean('showPrivateRepositoryAlert', false)}
                 showSourcegraphCloudAlert={boolean('showSourcegraphCloudAlert', false)}
                 isFullPage={true}
@@ -68,7 +68,7 @@ storiesOf('browser/Options/OptionsPage', module)
                 isActivated={isActivated}
                 onToggleActivated={setIsActivated}
                 validateSourcegraphUrl={invalidSourcegraphUrl}
-                sgURLs={text('sourcegraphUrl', 'https://not-sourcegraph.com')}
+                selfHostedSourcegraphURL={text('sourcegraphUrl', 'https://sourcegraph.com')}
                 isFullPage={true}
             />
         )
@@ -79,9 +79,8 @@ storiesOf('browser/Options/OptionsPage', module)
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}
-            sgURLs={text('sourcegraphUrl', 'https://sourcegraph.com')}
+            selfHostedSourcegraphURL={text('sourcegraphUrl', 'https://sourcegraph.com')}
             isFullPage={true}
-            currentHost="github.com"
             permissionAlert={{ name: 'GitHub', icon: GithubIcon }}
             requestPermissionsHandler={requestPermissionsHandler}
         />
@@ -92,9 +91,8 @@ storiesOf('browser/Options/OptionsPage', module)
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}
-            sgURLs={text('sourcegraphUrl', 'https://sourcegraph.com')}
+            selfHostedSourcegraphURL={text('sourcegraphUrl', 'https://sourcegraph.com')}
             isFullPage={true}
-            currentHost="github.com"
             showPrivateRepositoryAlert={true}
             requestPermissionsHandler={requestPermissionsHandler}
         />
@@ -105,9 +103,8 @@ storiesOf('browser/Options/OptionsPage', module)
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}
-            sgURLs={text('sourcegraphUrl', 'https://sourcegraph.com')}
+            selfHostedSourcegraphURL={text('sourcegraphUrl', 'https://sourcegraph.com')}
             isFullPage={true}
-            currentHost="sourcegraph.com"
             requestPermissionsHandler={requestPermissionsHandler}
             showSourcegraphCloudAlert={true}
         />
