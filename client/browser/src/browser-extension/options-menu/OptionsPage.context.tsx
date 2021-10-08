@@ -1,6 +1,6 @@
 import React from 'react'
 
-interface IOptionsPageContext {
+export interface IOptionsPageContext {
     // Repo blocklist
     blocklist?: {
         enabled: boolean

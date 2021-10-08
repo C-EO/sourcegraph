@@ -11,31 +11,44 @@ import { subtypeOf } from '@sourcegraph/shared/src/util/types'
 import brandedStyles from '../../branded.scss'
 
 import { OptionsPage, OptionsPageProps } from './OptionsPage'
+import { OptionsPageContext } from './OptionsPage.context'
 
 const validateSourcegraphUrl = (): Observable<string | undefined> => of(undefined)
 const invalidSourcegraphUrl = (): Observable<string | undefined> => of('Arbitrary error string')
 
-const commonProps = () =>
-    subtypeOf<Partial<OptionsPageProps>>()({
-        onChangeOptionFlag: action('onChangeOptionFlag'),
-        optionFlags: [
-            { key: 'allowErrorReporting', label: 'Allow error reporting', value: false },
-            { key: 'experimentalLinkPreviews', label: 'Experimental link previews', value: false },
-        ],
-        version: text('version', '0.0.0'),
-        onSelfHostedSourcegraphURLChange: action('onSelfHostedSourcegraphURLChange'),
-    })
+const commonProps = subtypeOf<Partial<OptionsPageProps>>()({
+    version: text('version', '0.0.0'),
+    onSelfHostedSourcegraphURLChange: action('onSelfHostedSourcegraphURLChange'),
+})
 
 const requestPermissionsHandler = action('requestPermission')
 
+// TODO: update
 storiesOf('browser/Options/OptionsPage', module)
-    .addDecorator(story => <BrandedStory styles={brandedStyles}>{() => story()}</BrandedStory>)
+    .addDecorator(story => (
+        <BrandedStory styles={brandedStyles}>
+            {() => (
+                <OptionsPageContext.Provider
+                    value={{
+                        onChangeOptionFlag: action('onChangeOptionFlag'),
+                        optionFlags: [
+                            { key: 'allowErrorReporting', label: 'Allow error reporting', value: false },
+                            { key: 'experimentalLinkPreviews', label: 'Experimental link previews', value: false },
+                        ],
+                        onBlocklistChange: () => {},
+                    }}
+                >
+                    {story()}
+                </OptionsPageContext.Provider>
+            )}
+        </BrandedStory>
+    ))
     .addParameters({
         chromatic: { delay: 500 },
     })
     .add('Default', () => (
         <OptionsPage
-            {...commonProps()}
+            {...commonProps}
             showPrivateRepositoryAlert={boolean('isCurrentRepositoryPrivate', false)}
             showSourcegraphCloudAlert={boolean('showSourcegraphCloudAlert', false)}
             validateSourcegraphUrl={validateSourcegraphUrl}
@@ -49,7 +62,7 @@ storiesOf('browser/Options/OptionsPage', module)
         const [isActivated, setIsActivated] = useState(false)
         return (
             <OptionsPage
-                {...commonProps()}
+                {...commonProps}
                 isActivated={isActivated}
                 onToggleActivated={setIsActivated}
                 validateSourcegraphUrl={validateSourcegraphUrl}
@@ -64,7 +77,7 @@ storiesOf('browser/Options/OptionsPage', module)
         const [isActivated, setIsActivated] = useState(false)
         return (
             <OptionsPage
-                {...commonProps()}
+                {...commonProps}
                 isActivated={isActivated}
                 onToggleActivated={setIsActivated}
                 validateSourcegraphUrl={invalidSourcegraphUrl}
@@ -75,7 +88,7 @@ storiesOf('browser/Options/OptionsPage', module)
     })
     .add('Asking for permission', () => (
         <OptionsPage
-            {...commonProps()}
+            {...commonProps}
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}
@@ -87,7 +100,7 @@ storiesOf('browser/Options/OptionsPage', module)
     ))
     .add('On private repository', () => (
         <OptionsPage
-            {...commonProps()}
+            {...commonProps}
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}
@@ -99,7 +112,7 @@ storiesOf('browser/Options/OptionsPage', module)
     ))
     .add('On Sourcegraph Cloud', () => (
         <OptionsPage
-            {...commonProps()}
+            {...commonProps}
             validateSourcegraphUrl={validateSourcegraphUrl}
             onToggleActivated={action('onToggleActivated')}
             isActivated={true}

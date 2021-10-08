@@ -20,6 +20,12 @@ const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 )
 
+const IconContainer: React.FC = ({ children }) => (
+    <div className="options-page__icon-container position-absolute d-flex justify-content-center align-items-center">
+        {children}
+    </div>
+)
+
 export interface SourcegraphURLInputProps {
     label: string
     description: JSX.Element | string
@@ -29,6 +35,7 @@ export interface SourcegraphURLInputProps {
     editable?: boolean
     onChange?: (value: string) => void
 }
+
 export const SourcegraphURLInput: React.FC<SourcegraphURLInputProps> = ({
     label,
     description,
@@ -61,16 +68,17 @@ export const SourcegraphURLInput: React.FC<SourcegraphURLInputProps> = ({
             onChange?.(urlState.value)
         }
     }, [onChange, urlState])
-    const isLoading = urlState.kind === 'LOADING' && !!urlState.value
+
     return (
         <div className={classNames('position-relative', className)}>
             <label htmlFor="sourcegraph-url">{label}</label>
-            <div
-                className={classNames({
-                    'options-page__input-disabled': !editable,
-                })}
-            >
-                <LoaderInput loading={isLoading} className={classNames(deriveInputClassName(urlState))}>
+            <div>
+                <LoaderInput
+                    loading={urlState.kind === 'LOADING' && !!urlState.value}
+                    className={classNames(deriveInputClassName(urlState), {
+                        'options-page__input-disabled': !editable,
+                    })}
+                >
                     <input
                         className={classNames(
                             'form-control',
@@ -89,13 +97,37 @@ export const SourcegraphURLInput: React.FC<SourcegraphURLInputProps> = ({
                         disabled={!editable}
                     />
                 </LoaderInput>
+                {!editable && <InfoText>{description}</InfoText>}
                 {urlState.value ? (
                     <>
-                        {urlState.kind === 'LOADING' && <small className="text-muted d-block mt-1">Checking...</small>}
+                        {urlState.kind === 'LOADING' && (
+                            <>
+                                {editable ? (
+                                    <small className="text-muted d-block mt-1">Checking...</small>
+                                ) : (
+                                    <IconContainer>
+                                        <LoadingSpinner className="options-page__icon-loading" />
+                                    </IconContainer>
+                                )}
+                            </>
+                        )}
+                        {urlState.kind === 'VALID' && (
+                            <>
+                                {editable ? (
+                                    <small className="valid-feedback test-valid-sourcegraph-url-feedback">
+                                        Looks good!
+                                    </small>
+                                ) : (
+                                    <IconContainer>
+                                        <CheckIcon className="options-page__icon-check" />
+                                    </IconContainer>
+                                )}
+                            </>
+                        )}
                         {urlState.kind === 'INVALID' && (
                             <small className="invalid-feedback">
                                 {urlState.reason === URL_FETCH_ERROR ? (
-                                    'Incorrect Sourcegraph instance address'
+                                    'Failed to connect. Sourcegraph instance is down or incorrect URL address'
                                 ) : urlState.reason === URL_AUTH_ERROR ? (
                                     <>
                                         Authentication to Sourcegraph failed.{' '}
@@ -113,25 +145,11 @@ export const SourcegraphURLInput: React.FC<SourcegraphURLInputProps> = ({
                                 )}
                             </small>
                         )}
-                        {urlState.kind === 'VALID' && (
-                            <small className="valid-feedback test-valid-sourcegraph-url-feedback">Looks good!</small>
-                        )}
                     </>
                 ) : (
                     <InfoText>{description}</InfoText>
                 )}
             </div>
-            <div className="options-page__icon-container position-absolute d-flex justify-content-center align-items-center">
-                {!editable &&
-                    (urlState.kind === 'LOADING' ? (
-                        <LoadingSpinner className="options-page__icon-loading" />
-                    ) : urlState.kind === 'VALID' ? (
-                        <CheckIcon className="options-page__icon-check" />
-                    ) : (
-                        <small className="options-page__text-error">{CLOUD_SOURCEGRAPH_URL} is down</small>
-                    ))}
-            </div>
-            {!editable && <InfoText>{description}</InfoText>}
         </div>
     )
 }
