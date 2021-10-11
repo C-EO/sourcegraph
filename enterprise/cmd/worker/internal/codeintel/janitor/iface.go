@@ -51,3 +51,7 @@ type LSIFStore interface {
 type GitserverClient interface {
 	policies.GitserverClient
 }
+
+type PolicyMatcher interface {
+	CommitsDescribedByPolicy(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]policies.PolicyMatch, error)
+}

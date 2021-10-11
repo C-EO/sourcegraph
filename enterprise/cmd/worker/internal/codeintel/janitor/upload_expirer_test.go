@@ -28,15 +28,6 @@ func TestUploadExpirer(t *testing.T) {
 		4: &d4,
 	}
 
-	now := timeutil.Now()
-	t1 := now.Add(-time.Hour)                 // 1 hour old
-	t2 := now.Add(-time.Hour * 24 * 7)        // 1 week ago
-	t3 := now.Add(-time.Hour * 24 * 30 * 5)   // 5 months ago
-	t4 := now.Add(-time.Hour * 24 * 30 * 9)   // 9 months ago
-	t5 := now.Add(-time.Hour * 24 * 30 * 18)  // 18 months ago
-	t6 := now.Add(-time.Hour * 24 * 365 * 2)  // 3 years ago
-	t8 := now.Add(-time.Hour * 24 * 365 * 15) // 15 years ago
-
 	globalPolicies := []dbstore.ConfigurationPolicy{
 		{
 			ID:                0,
@@ -61,10 +52,9 @@ func TestUploadExpirer(t *testing.T) {
 		},
 	}
 
-	repositoryPolicies := map[int][]dbstore.ConfigurationPolicy{
+	policiesByRepositoryID := map[int][]dbstore.ConfigurationPolicy{
 		50: {
 			dbstore.ConfigurationPolicy{
-				// RepositoryID: 50,
 				ID:                        4,
 				Type:                      "GIT_TREE",
 				Pattern:                   "ef/*",
@@ -75,7 +65,6 @@ func TestUploadExpirer(t *testing.T) {
 		},
 		53: {
 			dbstore.ConfigurationPolicy{
-				// RepositoryID: 53,
 				ID:                1,
 				Type:              "GIT_COMMIT",
 				Pattern:           "deadbeef13",
@@ -84,6 +73,15 @@ func TestUploadExpirer(t *testing.T) {
 			},
 		},
 	}
+
+	now := timeutil.Now()
+	t1 := now.Add(-time.Hour)                 // 1 hour old
+	t2 := now.Add(-time.Hour * 24 * 7)        // 1 week ago
+	t3 := now.Add(-time.Hour * 24 * 30 * 5)   // 5 months ago
+	t4 := now.Add(-time.Hour * 24 * 30 * 9)   // 9 months ago
+	t5 := now.Add(-time.Hour * 24 * 30 * 18)  // 18 months ago
+	t6 := now.Add(-time.Hour * 24 * 365 * 2)  // 3 years ago
+	t8 := now.Add(-time.Hour * 24 * 365 * 15) // 15 years ago
 
 	uploads := []dbstore.Upload{
 		//
@@ -154,20 +152,6 @@ func TestUploadExpirer(t *testing.T) {
 		{ID: 13, RepositoryID: 53, Commit: "deadbeef13", State: "completed", UploadedAt: t1},
 	}
 
-	dbStore := testUploadExpirerMockDBStore(globalPolicies, repositoryPolicies, uploads)
-
-	uploadExpirer := &uploadExpirer{
-		dbStore:                dbStore,
-		gitserverClient:        nil,
-		metrics:                newMetrics(&observation.TestContext),
-		repositoryProcessDelay: 24 * time.Hour,
-		repositoryBatchSize:    100,
-		uploadProcessDelay:     24 * time.Hour,
-		uploadBatchSize:        100,
-		commitBatchSize:        100,
-		branchesCacheMaxKeys:   10000,
-	}
-
 	newMatch := func(name string, id int) policies.PolicyMatch {
 		return policies.PolicyMatch{
 			Name:           name,
@@ -184,7 +168,7 @@ func TestUploadExpirer(t *testing.T) {
 			"deadbeef02": {newMatch("feat/blank", 2)},
 			"deadbeef04": {newMatch("v1.2.3", 3)},
 			"deadbeef05": {newMatch("v1.2.2", 3)},
-			"deadbeef06": {newMatch("ess/feature-z", 2)},
+			"deadbeef06": {newMatch("es/feature-z", 2)},
 			"deadbeef07": {newMatch("ef/feature-x", 2), newMatch("ef/feature-x", 4)},
 			"deadbeef08": {newMatch("ef/feature-x", 4)},
 			"deadbeef09": {newMatch("ef/feature-y", 2), newMatch("ef/feature-y", 4)},
@@ -194,9 +178,22 @@ func TestUploadExpirer(t *testing.T) {
 		53: {"deadbeef13": {newMatch("deadbeef13", 1)}},
 	}
 
-	// TODO - mock this better
-	commitsDescribedByPolicy = func(ctx context.Context, gitserverClient GitserverClient, repositoryID int, combinedPolicies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]policies.PolicyMatch, error) {
+	dbStore := testUploadExpirerMockDBStore(globalPolicies, policiesByRepositoryID, uploads)
+	policyMatcher := NewMockPolicyMatcher()
+	policyMatcher.CommitsDescribedByPolicyFunc.SetDefaultHook(func(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]policies.PolicyMatch, error) {
 		return policyMatches[repositoryID], nil
+	})
+
+	uploadExpirer := &uploadExpirer{
+		dbStore:                dbStore,
+		policyMatcher:          policyMatcher,
+		metrics:                newMetrics(&observation.TestContext),
+		repositoryProcessDelay: 24 * time.Hour,
+		repositoryBatchSize:    100,
+		uploadProcessDelay:     24 * time.Hour,
+		uploadBatchSize:        100,
+		commitBatchSize:        100,
+		branchesCacheMaxKeys:   10000,
 	}
 
 	if err := uploadExpirer.Handle(context.Background()); err != nil {

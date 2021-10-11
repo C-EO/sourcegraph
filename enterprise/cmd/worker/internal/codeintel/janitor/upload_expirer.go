@@ -16,7 +16,7 @@ import (
 
 type uploadExpirer struct {
 	dbStore                DBStore
-	gitserverClient        GitserverClient
+	policyMatcher          PolicyMatcher
 	metrics                *metrics
 	repositoryProcessDelay time.Duration
 	repositoryBatchSize    int
@@ -36,7 +36,7 @@ var _ goroutine.ErrorHandler = &uploadExpirer{}
 // no dependents will be removed by the expiredUploadDeleter.
 func NewUploadExpirer(
 	dbStore DBStore,
-	gitserverClient GitserverClient,
+	policyMatcher PolicyMatcher,
 	repositoryProcessDelay time.Duration,
 	repositoryBatchSize int,
 	uploadProcessDelay time.Duration,
@@ -48,7 +48,7 @@ func NewUploadExpirer(
 ) goroutine.BackgroundRoutine {
 	return goroutine.NewPeriodicGoroutine(context.Background(), interval, &uploadExpirer{
 		dbStore:                dbStore,
-		gitserverClient:        gitserverClient,
+		policyMatcher:          policyMatcher,
 		metrics:                metrics,
 		repositoryProcessDelay: repositoryProcessDelay,
 		repositoryBatchSize:    repositoryBatchSize,
@@ -127,9 +127,9 @@ func (e *uploadExpirer) handleRepository(
 	// visible from a tag or branch tip is protected for at least a short amount of time after upload.
 	combinedPolicies := append(globalPolicies, repositoryPolicies...)
 
-	commitMap, err := commitsDescribedByPolicy(ctx, e.gitserverClient, repositoryID, combinedPolicies, now)
+	commitMap, err := e.policyMatcher.CommitsDescribedByPolicy(ctx, repositoryID, combinedPolicies, now)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "policies.CommitsDescribedByPolicy")
 	}
 
 	// Mark the time after which all unprocessed uploads for this repository will not be touched.
@@ -167,31 +167,6 @@ func (e *uploadExpirer) handleRepository(
 			return err
 		}
 	}
-}
-
-// TODO - document
-var commitsDescribedByPolicy = func(
-	ctx context.Context,
-	gitserverClient GitserverClient,
-	repositoryID int,
-	combinedPolicies []dbstore.ConfigurationPolicy,
-	now time.Time,
-) (map[string][]policies.PolicyMatch, error) {
-	//
-	// TODO - bad API shape - fix this
-	//
-
-	matcher, err := policies.NewMatcher(gitserverClient, combinedPolicies, policies.RetentionExtractor, repositoryID, true, false)
-	if err != nil {
-		return nil, errors.Wrap(err, "policies.NewMatcher")
-	}
-
-	commitMap, err := matcher.CommitsDescribedByPolicy(ctx, now)
-	if err != nil {
-		return nil, errors.Wrap(err, "policies.CommitsDescribedByPolicy")
-	}
-
-	return commitMap, nil
 }
 
 func (e *uploadExpirer) handleUploads(
