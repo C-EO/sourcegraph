@@ -15,11 +15,7 @@ func TestCommitsDescribedByPolicyForRetention(t *testing.T) {
 	developGitserverClient := testUploadExpirerMockGitserverClient("develop", testBranchHeads, testTagHeads, testBranchMembers, testCreatedAt)
 
 	runTest := func(t *testing.T, gitserverClient *MockGitserverClient, policies []dbstore.ConfigurationPolicy, expectedPolicyMatches map[string][]PolicyMatch) {
-		matcher, err := NewMatcher(gitserverClient, policies, RetentionExtractor, 50, true, false)
-		if err != nil {
-			t.Fatalf("unexpected error creating matcher: %s", err)
-		}
-		policyMatches, err := matcher.CommitsDescribedByPolicy(context.Background(), testNow)
+		policyMatches, err := NewMatcher(gitserverClient, RetentionExtractor, true, false).CommitsDescribedByPolicy(context.Background(), 50, policies, testNow)
 		if err != nil {
 			t.Fatalf("unexpected error finding matches: %s", err)
 		}

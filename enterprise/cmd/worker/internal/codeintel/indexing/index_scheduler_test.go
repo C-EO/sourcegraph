@@ -18,11 +18,14 @@ func TestIndexSchedulerUpdate(t *testing.T) {
 	mockDBStore := NewMockDBStore()
 	mockDBStore.SelectRepositoriesForIndexScanFunc.SetDefaultReturn([]int{1, 2, 3}, nil)
 	mockDBStore.GetConfigurationPoliciesFunc.SetDefaultReturn(nil, nil)
-
+	mockPolicyMatcher := NewMockPolicyMatcher()
 	indexEnqueuer := NewMockIndexEnqueuer()
+
+	// TODO - rewrite test conditions
 
 	scheduler := &IndexScheduler{
 		dbStore:       mockDBStore,
+		policyMatcher: mockPolicyMatcher,
 		indexEnqueuer: indexEnqueuer,
 		operations:    newOperations(&observation.TestContext),
 	}

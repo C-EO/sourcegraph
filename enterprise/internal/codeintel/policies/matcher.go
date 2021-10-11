@@ -29,13 +29,13 @@ func NewMatcher(
 	extractor Extractor,
 	includeTipOfDefaultBranch bool,
 	filterByCreatedDate bool,
-) (*Matcher, error) {
+) *Matcher {
 	return &Matcher{
 		gitserverClient:           gitserverClient,
 		extractor:                 extractor,
 		includeTipOfDefaultBranch: includeTipOfDefaultBranch,
 		filterByCreatedDate:       filterByCreatedDate,
-	}, nil
+	}
 }
 
 // compilePatterns constructs a map from patterns in each given policy to a compiled glob object used

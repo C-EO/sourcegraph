@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/inconshreveable/log15"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/policies"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
@@ -18,7 +17,7 @@ import (
 
 type IndexScheduler struct {
 	dbStore                DBStore
-	gitserverClient        GitserverClient
+	policyMatcher          PolicyMatcher
 	indexEnqueuer          IndexEnqueuer
 	repositoryProcessDelay time.Duration
 	repositoryBatchSize    int
@@ -32,7 +31,7 @@ var (
 
 func NewIndexScheduler(
 	dbStore DBStore,
-	gitserverClient GitserverClient,
+	policyMatcher PolicyMatcher,
 	indexEnqueuer IndexEnqueuer,
 	repositoryProcessDelay time.Duration,
 	repositoryBatchSize int,
@@ -41,7 +40,7 @@ func NewIndexScheduler(
 ) goroutine.BackgroundRoutine {
 	scheduler := &IndexScheduler{
 		dbStore:                dbStore,
-		gitserverClient:        gitserverClient,
+		policyMatcher:          policyMatcher,
 		indexEnqueuer:          indexEnqueuer,
 		repositoryProcessDelay: repositoryProcessDelay,
 		repositoryBatchSize:    repositoryBatchSize,
@@ -98,16 +97,7 @@ func (s *IndexScheduler) Handle(ctx context.Context) error {
 
 		combinedPolicies := append(globalPolicies, repositoryPolicies...)
 
-		//
-		// TODO - mock this out
-		//
-
-		// Determine the set of commits that should be reliably indexed for this repository
-		matcher, err := policies.NewMatcher(s.gitserverClient, policies.IndexingExtractor, false, true)
-		if err != nil {
-			return errors.Wrap(err, "policies.NewMatcher")
-		}
-		commitMap, err := matcher.CommitsDescribedByPolicy(ctx, repositoryID, combinedPolicies, time.Now())
+		commitMap, err := s.policyMatcher.CommitsDescribedByPolicy(ctx, repositoryID, combinedPolicies, time.Now())
 		if err != nil {
 			return errors.Wrap(err, "policies.CommitsDescribedByPolicy")
 		}

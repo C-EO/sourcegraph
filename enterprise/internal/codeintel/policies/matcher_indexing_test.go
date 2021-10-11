@@ -15,11 +15,7 @@ func TestCommitsDescribedByPolicyForIndexing(t *testing.T) {
 	developGitserverClient := testUploadExpirerMockGitserverClient("develop", testBranchHeads, testTagHeads, testBranchMembers, testCreatedAt)
 
 	runTest := func(t *testing.T, gitserverClient GitserverClient, policies []dbstore.ConfigurationPolicy, expectedPolicyMatches map[string][]PolicyMatch) {
-		matcher, err := NewMatcher(gitserverClient, policies, IndexingExtractor, 50, false, true)
-		if err != nil {
-			t.Fatalf("unexpected error creating matcher: %s", err)
-		}
-		policyMatches, err := matcher.CommitsDescribedByPolicy(context.Background(), testNow)
+		policyMatches, err := NewMatcher(gitserverClient, IndexingExtractor, false, true).CommitsDescribedByPolicy(context.Background(), 50, policies, testNow)
 		if err != nil {
 			t.Fatalf("unexpected error finding matches: %s", err)
 		}

@@ -46,6 +46,7 @@ type resolver struct {
 	dbStore         DBStore
 	lsifStore       LSIFStore
 	gitserverClient GitserverClient
+	policyMatcher   *policies.Matcher
 	indexEnqueuer   IndexEnqueuer
 	hunkCache       HunkCache
 	operations      *operations
@@ -75,6 +76,7 @@ func newResolver(
 		dbStore:         dbStore,
 		lsifStore:       lsifStore,
 		gitserverClient: gitserverClient,
+		policyMatcher:   policies.NewMatcher(gitserverClient, nil, false, false),
 		indexEnqueuer:   indexEnqueuer,
 		hunkCache:       hunkCache,
 		operations:      newOperations(observationContext),
@@ -224,12 +226,7 @@ func (r *resolver) UpdateIndexConfigurationByRepositoryID(ctx context.Context, r
 }
 
 func (r *resolver) PreviewGitObjectFilter(ctx context.Context, repositoryID int, gitObjectType dbstore.GitObjectType, pattern string) (map[string][]string, error) {
-	matcher, err := policies.NewMatcher(r.gitserverClient, []dbstore.ConfigurationPolicy{{Type: gitObjectType, Pattern: pattern}}, nil, repositoryID, false, false)
-	if err != nil {
-		return nil, err
-	}
-
-	policyMatches, err := matcher.CommitsDescribedByPolicy(ctx, time.Now())
+	policyMatches, err := r.policyMatcher.CommitsDescribedByPolicy(ctx, repositoryID, []dbstore.ConfigurationPolicy{{Type: gitObjectType, Pattern: pattern}}, time.Now())
 	if err != nil {
 		return nil, err
 	}
