@@ -331,7 +331,12 @@ func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, br
 func parseCommitsUniqueToBranch(lines []string) (_ map[string]time.Time, err error) {
 	commitDates := make(map[string]time.Time, len(lines))
 	for _, line := range lines {
-		parts := strings.Split(line, ":")
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
 		if len(parts) != 2 {
 			return nil, errors.Errorf(`unexpected output from git log "%s"`, line)
 		}

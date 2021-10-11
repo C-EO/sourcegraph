@@ -224,5 +224,25 @@ func (r *resolver) UpdateIndexConfigurationByRepositoryID(ctx context.Context, r
 }
 
 func (r *resolver) PreviewGitObjectFilter(ctx context.Context, repositoryID int, gitObjectType dbstore.GitObjectType, pattern string) (map[string][]string, error) {
-	return policies.CommitsDescribedByPolicy(ctx, r.gitserverClient, repositoryID, []dbstore.ConfigurationPolicy{{Type: gitObjectType, Pattern: pattern}}, nil, false, time.Now())
+	matcher, err := policies.NewMatcher(r.gitserverClient, []dbstore.ConfigurationPolicy{{Type: gitObjectType, Pattern: pattern}}, nil, repositoryID, false, false)
+	if err != nil {
+		return nil, err
+	}
+
+	policyMatches, err := matcher.CommitsDescribedByPolicy(ctx, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	namesByCommit := make(map[string][]string, len(policyMatches))
+	for commit, policyMatches := range policyMatches {
+		names := make([]string, 0, len(policyMatches))
+		for _, policyMatch := range policyMatches {
+			names = append(names, policyMatch.Name)
+		}
+
+		namesByCommit[commit] = names
+	}
+
+	return namesByCommit, nil
 }
