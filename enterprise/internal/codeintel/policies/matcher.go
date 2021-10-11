@@ -26,23 +26,13 @@ type Matcher struct {
 
 func NewMatcher(
 	gitserverClient GitserverClient,
-	policies []dbstore.ConfigurationPolicy,
 	extractor Extractor,
-	repositoryID int,
 	includeTipOfDefaultBranch bool,
 	filterByCreatedDate bool,
 ) (*Matcher, error) {
-	patterns, err := compilePatterns(policies)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Matcher{
 		gitserverClient:           gitserverClient,
-		policies:                  policies,
-		patterns:                  patterns,
 		extractor:                 extractor,
-		repositoryID:              repositoryID,
 		includeTipOfDefaultBranch: includeTipOfDefaultBranch,
 		filterByCreatedDate:       filterByCreatedDate,
 	}, nil
@@ -83,7 +73,17 @@ type branchRequestMeta struct {
 }
 
 // TODO - document
-func (m *Matcher) CommitsDescribedByPolicy(ctx context.Context, now time.Time) (map[string][]PolicyMatch, error) {
+func (m *Matcher) CommitsDescribedByPolicy(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]PolicyMatch, error) {
+	patterns, err := compilePatterns(policies)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ew eew ew ew
+	m.policies = policies
+	m.patterns = patterns
+	m.repositoryID = repositoryID
+
 	if len(m.policies) == 0 && !m.includeTipOfDefaultBranch {
 		return nil, nil
 	}

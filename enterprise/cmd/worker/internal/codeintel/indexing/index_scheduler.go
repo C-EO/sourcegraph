@@ -98,12 +98,16 @@ func (s *IndexScheduler) Handle(ctx context.Context) error {
 
 		combinedPolicies := append(globalPolicies, repositoryPolicies...)
 
+		//
+		// TODO - mock this out
+		//
+
 		// Determine the set of commits that should be reliably indexed for this repository
-		matcher, err := policies.NewMatcher(s.gitserverClient, combinedPolicies, policies.IndexingExtractor, repositoryID, false, true)
+		matcher, err := policies.NewMatcher(s.gitserverClient, policies.IndexingExtractor, false, true)
 		if err != nil {
 			return errors.Wrap(err, "policies.NewMatcher")
 		}
-		commitMap, err := matcher.CommitsDescribedByPolicy(ctx, time.Now())
+		commitMap, err := matcher.CommitsDescribedByPolicy(ctx, repositoryID, combinedPolicies, time.Now())
 		if err != nil {
 			return errors.Wrap(err, "policies.CommitsDescribedByPolicy")
 		}
