@@ -5,8 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
 )
 
@@ -17,8 +15,13 @@ func testUploadExpirerMockDBStore(
 	repositoryPolicies map[int][]dbstore.ConfigurationPolicy,
 	uploads []dbstore.Upload,
 ) *MockDBStore {
-	repositoryIDs := make([]int, 0, len(repositoryPolicies))
-	for repositoryID := range repositoryPolicies {
+	repositoryIDMap := map[int]struct{}{}
+	for _, upload := range uploads {
+		repositoryIDMap[upload.RepositoryID] = struct{}{}
+	}
+
+	repositoryIDs := make([]int, 0, len(repositoryIDMap))
+	for repositoryID := range repositoryIDMap {
 		repositoryIDs = append(repositoryIDs, repositoryID)
 	}
 
@@ -114,10 +117,5 @@ func (state *uploadExpirerMockStore) GetConfigurationPolicies(ctx context.Contex
 		return state.globalPolicies, nil
 	}
 
-	policies, ok := state.repositoryPolicies[opts.RepositoryID]
-	if !ok {
-		return nil, errors.Errorf("unexpected repository argument %d", opts.RepositoryID)
-	}
-
-	return policies, nil
+	return state.repositoryPolicies[opts.RepositoryID], nil
 }
