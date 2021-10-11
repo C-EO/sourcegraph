@@ -127,13 +127,9 @@ func (e *uploadExpirer) handleRepository(
 	// visible from a tag or branch tip is protected for at least a short amount of time after upload.
 	combinedPolicies := append(globalPolicies, repositoryPolicies...)
 
-	matcher, err := policies.NewMatcher(e.gitserverClient, combinedPolicies, policies.RetentionExtractor, repositoryID, true, false)
+	commitMap, err := commitsDescribedByPolicy(ctx, e.gitserverClient, repositoryID, combinedPolicies, now)
 	if err != nil {
-		return errors.Wrap(err, "policies.NewMatcher")
-	}
-	commitMap, err := matcher.CommitsDescribedByPolicy(ctx, now)
-	if err != nil {
-		return errors.Wrap(err, "policies.CommitsDescribedByPolicy")
+		return err
 	}
 
 	// Mark the time after which all unprocessed uploads for this repository will not be touched.
@@ -171,6 +167,31 @@ func (e *uploadExpirer) handleRepository(
 			return err
 		}
 	}
+}
+
+// TODO - document
+var commitsDescribedByPolicy = func(
+	ctx context.Context,
+	gitserverClient GitserverClient,
+	repositoryID int,
+	combinedPolicies []dbstore.ConfigurationPolicy,
+	now time.Time,
+) (map[string][]policies.PolicyMatch, error) {
+	//
+	// TODO - bad API shape - fix this
+	//
+
+	matcher, err := policies.NewMatcher(gitserverClient, combinedPolicies, policies.RetentionExtractor, repositoryID, true, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "policies.NewMatcher")
+	}
+
+	commitMap, err := matcher.CommitsDescribedByPolicy(ctx, now)
+	if err != nil {
+		return nil, errors.Wrap(err, "policies.CommitsDescribedByPolicy")
+	}
+
+	return commitMap, nil
 }
 
 func (e *uploadExpirer) handleUploads(
@@ -251,9 +272,7 @@ func (e *uploadExpirer) isUploadProtectedByPolicy(
 		for _, commit := range commits {
 			if policyMatches, ok := commitMap[commit]; ok {
 				for _, policyMatch := range policyMatches {
-					// TODO - should be uploaded at instead?
-					// TODO - should filter out things not within time range first
-					if policyMatch.PolicyDuration == nil || now.Sub(*upload.FinishedAt) < *policyMatch.PolicyDuration {
+					if policyMatch.PolicyDuration == nil || now.Sub(upload.UploadedAt) < *policyMatch.PolicyDuration {
 						return true, nil
 					}
 				}

@@ -24,7 +24,7 @@ func testUploadExpirerMockDBStore(
 
 	sort.Slice(uploads, func(i, j int) bool {
 		// Ensure we return uploads in decreasing age
-		return uploads[i].FinishedAt.Before(*uploads[j].FinishedAt)
+		return uploads[i].UploadedAt.Before(uploads[j].UploadedAt)
 	})
 
 	state := &uploadExpirerMockStore{
