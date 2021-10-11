@@ -10,7 +10,7 @@ import { buildSearchURLQuery } from '@sourcegraph/shared/src/util/url'
 import { SearchPatternType } from '../../graphql-operations'
 import { createSuggestionFetcher } from '../backend/search'
 import { createPlatformContext } from '../platform/context'
-import { SourcegraphURL } from '../platform/sourcegraphUrl'
+import { SourcegraphUrlService } from '../platform/sourcegraphUrlService'
 import { getAssetsURL, CLOUD_SOURCEGRAPH_URL } from '../util/context'
 
 const isURL = /^https?:\/\//
@@ -35,7 +35,7 @@ export class SearchCommand {
             this.suggestionFetcher({
                 query,
                 handler: async suggestions => {
-                    const sourcegraphURL = await SourcegraphURL.observe(IS_EXTENSION).pipe(take(1)).toPromise()
+                    const sourcegraphURL = await SourcegraphUrlService.observe(IS_EXTENSION).pipe(take(1)).toPromise()
                     const built = suggestions.map(({ title, url, urlLabel }) => ({
                         content: `${sourcegraphURL}${url}`,
                         description: `${title} - ${urlLabel}`,
@@ -55,7 +55,7 @@ export class SearchCommand {
         query: string,
         disposition?: 'newForegroundTab' | 'newBackgroundTab' | 'currentTab'
     ): Promise<void> => {
-        const sourcegraphURL = await SourcegraphURL.observe(IS_EXTENSION).pipe(take(1)).toPromise()
+        const sourcegraphURL = await SourcegraphUrlService.observe(IS_EXTENSION).pipe(take(1)).toPromise()
 
         const [patternType, caseSensitive] = await this.getDefaultSearchSettings(sourcegraphURL)
 

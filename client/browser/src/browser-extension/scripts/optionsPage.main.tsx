@@ -15,7 +15,7 @@ import { useObservable } from '@sourcegraph/shared/src/util/useObservable'
 
 import { fetchSite } from '../../shared/backend/server'
 import { isExtension } from '../../shared/context'
-import { SourcegraphURL } from '../../shared/platform/sourcegraphUrl'
+import { SourcegraphUrlService } from '../../shared/platform/sourcegraphUrlService'
 import { initSentry } from '../../shared/sentry'
 import { getExtensionVersion, CLOUD_SOURCEGRAPH_URL } from '../../shared/util/context'
 import { featureFlags } from '../../shared/util/featureFlags'
@@ -108,7 +108,7 @@ const validateSourcegraphUrl = (url: string): Observable<string | undefined> =>
     )
 
 const observeOptionFlagsWithValues = (): Observable<OptionFlagWithValue[]> => {
-    const overrideSendTelemetry: Observable<boolean> = SourcegraphURL.observe().pipe(
+    const overrideSendTelemetry: Observable<boolean> = SourcegraphUrlService.observe().pipe(
         map(sourcegraphUrl => shouldOverrideSendTelemetry(isFirefox(), isExtension, sourcegraphUrl))
     )
 
@@ -137,11 +137,11 @@ function onChangeOptionFlag(key: string, value: boolean): void {
 }
 
 function handleSelfHostedSourcegraphURLChange(sourcegraphURL?: string): void {
-    SourcegraphURL.setSelfHostedSourcegraphURL(sourcegraphURL).catch(console.error)
+    SourcegraphUrlService.setSelfHostedSourcegraphURL(sourcegraphURL).catch(console.error)
 }
 
 function onBlocklistChange(enabled: boolean, content: string): void {
-    SourcegraphURL.setBlocklist({ enabled, content }).catch(console.error)
+    SourcegraphUrlService.setBlocklist({ enabled, content }).catch(console.error)
 }
 
 function buildRequestPermissionsHandler({ protocol, host }: TabStatus) {
@@ -154,9 +154,9 @@ function buildRequestPermissionsHandler({ protocol, host }: TabStatus) {
 }
 
 const Options: React.FunctionComponent = () => {
-    const sourcegraphURL = useObservable(SourcegraphURL.observe())
-    const selfHostedSourcegraphURL = useObservable(SourcegraphURL.getSelfHostedSourcegraphURL())
-    const blocklist = useObservable(SourcegraphURL.getBlocklist())
+    const sourcegraphURL = useObservable(SourcegraphUrlService.observe())
+    const selfHostedSourcegraphURL = useObservable(SourcegraphUrlService.getSelfHostedSourcegraphURL())
+    const blocklist = useObservable(SourcegraphUrlService.getBlocklist())
     const isActivated = useObservable(observingIsActivated)
     const optionFlags = useObservable(observingOptionFlagsWithValues) || []
     const [currentTabStatus, setCurrentTabStatus] = useState<

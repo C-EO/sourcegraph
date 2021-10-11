@@ -1,7 +1,7 @@
 import { Observable, Subscription } from 'rxjs'
 import { startWith, filter } from 'rxjs/operators'
 
-import { SourcegraphURL } from '../../platform/sourcegraphUrl'
+import { SourcegraphUrlService } from '../../platform/sourcegraphUrlService'
 import { CLOUD_SOURCEGRAPH_URL } from '../../util/context'
 import { MutationRecordLike, observeMutations as defaultObserveMutations } from '../../util/dom'
 
@@ -61,10 +61,10 @@ export async function injectCodeIntelligence(
     logger.info(`Detected: codehost="${codeHost.type}" repository="${rawRepoName ?? ''}"`)
 
     if (rawRepoName) {
-        await SourcegraphURL.use(rawRepoName)
+        await SourcegraphUrlService.use(rawRepoName)
     }
 
-    return SourcegraphURL.observe(isExtension)
+    return SourcegraphUrlService.observe(isExtension)
         .pipe(
             filter(sourcegraphURL => {
                 /*

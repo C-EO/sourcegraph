@@ -88,7 +88,7 @@ import { toTextDocumentPositionParameters } from '../../backend/extension-api-co
 import { CodeViewToolbar, CodeViewToolbarClassProps } from '../../components/CodeViewToolbar'
 import { isExtension, isInPage } from '../../context'
 import { SourcegraphIntegrationURLs, BrowserPlatformContext } from '../../platform/context'
-import { SourcegraphURL } from '../../platform/sourcegraphUrl'
+import { SourcegraphUrlService } from '../../platform/sourcegraphUrlService'
 import { resolveRevision, retryWhenCloneInProgressError } from '../../repo/backend'
 import { EventLogger, ConditionalTelemetryService } from '../../tracking/eventLogger'
 import { CLOUD_SOURCEGRAPH_URL, getPlatformName } from '../../util/context'
@@ -1305,7 +1305,7 @@ export function injectCodeIntelligenceToCodeHost(
     const { requestGraphQL } = platformContext
     subscriptions.add(extensionsController)
 
-    const overrideSendTelemetry = SourcegraphURL.observe(isExtension).pipe(
+    const overrideSendTelemetry = SourcegraphUrlService.observe(isExtension).pipe(
         map(sourcegraphUrl => shouldOverrideSendTelemetry(isFirefox(), isExtension, sourcegraphUrl))
     )
 

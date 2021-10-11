@@ -10,7 +10,7 @@ import { storage } from '../../browser-extension/web-extension-api/storage'
 import { UserEvent } from '../../graphql-operations'
 import { logUserEvent, logEvent } from '../backend/userEvents'
 import { isInPage } from '../context'
-import { SourcegraphURL } from '../platform/sourcegraphUrl'
+import { SourcegraphUrlService } from '../platform/sourcegraphUrlService'
 import { getPlatformName } from '../util/context'
 
 const uidKey = 'sourcegraphAnonymousUid'
@@ -76,7 +76,7 @@ export class EventLogger implements TelemetryService {
         // NOTE: should we send logs when using particular sgURL?
         // TODO pass this Observable as a parameter
         // eslint-disable-next-line rxjs/no-ignored-subscription
-        SourcegraphURL.observe(isExtension).subscribe(replaySubject)
+        SourcegraphUrlService.observe(isExtension).subscribe(replaySubject)
         // Fetch user ID on initial load.
         this.getAnonUserID().catch(noop)
     }

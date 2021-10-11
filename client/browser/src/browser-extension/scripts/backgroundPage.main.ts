@@ -29,7 +29,7 @@ import { getHeaders } from '../../shared/backend/headers'
 import { fetchSite } from '../../shared/backend/server'
 import { initializeOmniboxInterface } from '../../shared/cli'
 import { browserPortToMessagePort, findMessagePorts } from '../../shared/platform/ports'
-import { SourcegraphURL } from '../../shared/platform/sourcegraphUrl'
+import { SourcegraphUrlService } from '../../shared/platform/sourcegraphUrlService'
 import { createBlobURLForBundle } from '../../shared/platform/worker'
 import { initSentry } from '../../shared/sentry'
 import { BrowserActionIconState, setBrowserActionIconState } from '../browser-action-icon'
@@ -112,7 +112,7 @@ const requestGraphQL = <T, V = object>({
     variables: V
     sourcegraphURL?: string
 }): Observable<GraphQLResult<T>> =>
-    (sourcegraphURL ? of(sourcegraphURL) : SourcegraphURL.observe(IS_EXTENSION)).pipe(
+    (sourcegraphURL ? of(sourcegraphURL) : SourcegraphUrlService.observe(IS_EXTENSION)).pipe(
         take(1),
         switchMap(sourcegraphURL =>
             requestGraphQLCommon<T, V>({
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
         observeStorageKey('managed', 'sourcegraphURL')
             .pipe(
                 filter(isDefined),
-                concatMap(sourcegraphURL => SourcegraphURL.setSelfHostedSourcegraphURL(sourcegraphURL))
+                concatMap(sourcegraphURL => SourcegraphUrlService.setSelfHostedSourcegraphURL(sourcegraphURL))
             )
             .subscribe()
     )
@@ -152,7 +152,7 @@ async function main(): Promise<void> {
 
         // Configure the omnibox when the sourcegraphURL changes.
         subscriptions.add(
-            SourcegraphURL.observe(IS_EXTENSION).subscribe(sourcegraphURL => {
+            SourcegraphUrlService.observe(IS_EXTENSION).subscribe(sourcegraphURL => {
                 configureOmnibox(sourcegraphURL)
             })
         )
@@ -433,7 +433,7 @@ function observeCurrentTabPrivateCloudError(): Observable<boolean> {
 function observeSourcegraphUrlValidation(): Observable<boolean> {
     return merge(
         // Whenever the URL was persisted to storage, we can assume it was validated before-hand
-        SourcegraphURL.observe().pipe(mapTo(true)),
+        SourcegraphUrlService.observe().pipe(mapTo(true)),
         timer(0, INTERVAL_FOR_SOURCEGRPAH_URL_CHECK).pipe(mergeMap(() => validateSite()))
     )
 }

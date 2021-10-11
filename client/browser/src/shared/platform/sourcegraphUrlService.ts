@@ -30,7 +30,7 @@ const isRepoCloned = (sourcegraphURL: string, repoName: string): Observable<bool
         map(({ repository }) => !!repository?.mirrorInfo?.cloned)
     )
 
-export const SourcegraphURL = (() => {
+export const SourcegraphUrlService = (() => {
     const selfHostedSourcegraphURL = new BehaviorSubject<string | undefined>(undefined)
     const currentSourcegraphURL = new BehaviorSubject<string>(CLOUD_SOURCEGRAPH_URL)
     const blocklist = new BehaviorSubject<SyncStorageItems['blocklist'] | undefined>(undefined)
@@ -44,12 +44,21 @@ export const SourcegraphURL = (() => {
 
     /* Checks if a given pair of (sgURL, rawRepoName) is not in blocklist */
     const isInBlocklist = (sgURL: string, rawRepoName: string): boolean => {
-        const { enabled, content = '' } = blocklist.value ?? {}
+        const { enabled = false, content = '' } = blocklist.value ?? {}
 
         return (
             isCloudSourcegraphUrl(sgURL) &&
-            !!enabled &&
-            content.split(/\n+/).some(pattern => new RegExp(pattern).test(rawRepoName))
+            enabled &&
+            content
+                .split(/\n+/)
+                .filter(Boolean)
+                .some(pattern => {
+                    let rawRepoRegex = pattern.replace(/(\/$|(https:\/\/))/g, '')
+                    if (!rawRepoRegex.endsWith('$') && !rawRepoRegex.endsWith('*')) {
+                        rawRepoRegex += '$'
+                    }
+                    return new RegExp(rawRepoRegex).test(rawRepoName)
+                })
         )
     }
 
