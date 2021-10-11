@@ -5,7 +5,7 @@ import { OptionsPageContext } from '../OptionsPage.context'
 import { CodeTextArea } from './CodeTextArea'
 import { InfoText } from './InfoText'
 
-const PLACEHOLDER = ['https://github.com/org/repo', 'https://github.com/org/*'].join('\n')
+const PLACEHOLDER = ['https://github.com/org/repo', 'github.com/org/*'].join('\n')
 
 const Checkbox: React.FC<{ value: boolean; onChange: (value: boolean) => void }> = ({ value, children, onChange }) => (
     <div className="form-check">

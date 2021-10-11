@@ -4,10 +4,12 @@ import { map, first, defaultIfEmpty, distinctUntilChanged, tap } from 'rxjs/oper
 import { dataOrThrowErrors, gql } from '@sourcegraph/shared/src/graphql/graphql'
 import * as GQL from '@sourcegraph/shared/src/graphql/schema'
 
-import { background } from '../../browser-extension/web-extension-api/runtime'
-import { observeStorageKey, storage } from '../../browser-extension/web-extension-api/storage'
-import { SyncStorageItems } from '../../browser-extension/web-extension-api/types'
-import { CLOUD_SOURCEGRAPH_URL, isCloudSourcegraphUrl } from '../util/context'
+import { background } from '../../../browser-extension/web-extension-api/runtime'
+import { observeStorageKey, storage } from '../../../browser-extension/web-extension-api/storage'
+import { SyncStorageItems } from '../../../browser-extension/web-extension-api/types'
+import { CLOUD_SOURCEGRAPH_URL, isCloudSourcegraphUrl } from '../../util/context'
+
+import { isInBlocklist } from './lib/isInBlocklist'
 
 const QUERY = gql`
     query ResolveRawRepoName($repoName: String!) {
@@ -42,24 +44,11 @@ export const SourcegraphUrlService = (() => {
         observeStorageKey('sync', 'blocklist').subscribe(blocklist)
     }
 
-    /* Checks if a given pair of (sgURL, rawRepoName) is not in blocklist */
-    const isInBlocklist = (sgURL: string, rawRepoName: string): boolean => {
+    /* Checks if rawRepoName is blocked */
+    const isBlocked = (sgURL: string, rawRepoName: string): boolean => {
         const { enabled = false, content = '' } = blocklist.value ?? {}
 
-        return (
-            isCloudSourcegraphUrl(sgURL) &&
-            enabled &&
-            content
-                .split(/\n+/)
-                .filter(Boolean)
-                .some(pattern => {
-                    let rawRepoRegex = pattern.replace(/(\/$|(https:\/\/))/g, '')
-                    if (!rawRepoRegex.endsWith('$') && !rawRepoRegex.endsWith('*')) {
-                        rawRepoRegex += '$'
-                    }
-                    return new RegExp(rawRepoRegex).test(rawRepoName)
-                })
-        )
+        return isCloudSourcegraphUrl(sgURL) && enabled && isInBlocklist(content, rawRepoName)
     }
 
     /**
@@ -72,12 +61,12 @@ export const SourcegraphUrlService = (() => {
         const URLs = [CLOUD_SOURCEGRAPH_URL, selfHostedSourcegraphURL.value].filter(Boolean) as string[]
 
         const cachedURL = cache[rawRepoName]
-        if (cachedURL && URLs.includes(cachedURL) && !isInBlocklist(cachedURL, rawRepoName)) {
+        if (cachedURL && URLs.includes(cachedURL) && !isBlocked(cachedURL, rawRepoName)) {
             return cachedURL
         }
 
         return merge(
-            ...URLs.filter(url => !isInBlocklist(url, rawRepoName)).map(url =>
+            ...URLs.filter(url => !isBlocked(url, rawRepoName)).map(url =>
                 isRepoCloned(url, rawRepoName).pipe(map(isCloned => [isCloned, url] as [boolean, string]))
             )
         )

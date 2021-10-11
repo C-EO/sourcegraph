@@ -1,8 +1,8 @@
 import { TestScheduler } from 'rxjs/testing'
 
-import { CLOUD_SOURCEGRAPH_URL } from '../util/context'
+import { CLOUD_SOURCEGRAPH_URL } from '../../util/context'
 
-import { SourcegraphUrlService } from './sourcegraphUrlService'
+import { SourcegraphUrlService } from '.'
 
 const scheduler = (): TestScheduler => new TestScheduler((a, b) => expect(a).toEqual(b))
 

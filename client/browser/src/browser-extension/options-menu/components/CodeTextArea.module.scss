@@ -12,6 +12,7 @@
 .textarea {
     width: 100%;
     border: none;
+    color: var(--search-query-text-color);
     background: transparent;
     font-family: var(--code-font-family);
 
@@ -20,6 +21,10 @@
     &:focus {
         outline: none;
         box-shadow: none;
+    }
+
+    &::placeholder {
+        color: var(--text-disabled);
     }
 }
 
