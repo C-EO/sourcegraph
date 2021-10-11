@@ -127,7 +127,11 @@ func (e *uploadExpirer) handleRepository(
 	// visible from a tag or branch tip is protected for at least a short amount of time after upload.
 	combinedPolicies := append(globalPolicies, repositoryPolicies...)
 
-	commitMap, err := policies.CommitsDescribedByPolicy(ctx, e.gitserverClient, repositoryID, combinedPolicies, policies.RetentionExtractor, true, now)
+	matcher, err := policies.NewMatcher(e.gitserverClient, combinedPolicies, policies.RetentionExtractor, repositoryID, true, false)
+	if err != nil {
+		return errors.Wrap(err, "policies.NewMatcher")
+	}
+	commitMap, err := matcher.CommitsDescribedByPolicy(ctx, now)
 	if err != nil {
 		return errors.Wrap(err, "policies.CommitsDescribedByPolicy")
 	}

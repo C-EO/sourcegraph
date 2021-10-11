@@ -296,11 +296,12 @@ func parseRefDescriptions(lines []string) (map[string][]RefDescription, error) {
 	return refDescriptions, nil
 }
 
+// TODO - redocument
 // CommitsUniqueToBranch returns the commits that exist on a particular branch in the given repository. This set
 // of commits is determined by listing `{branchName} ^HEAD`, which is interpreted as: all commits on {branchName}
 // not also on the tip of the default branch. If the supplied branch name is the default branch, then this method
 // instead returns all commits reachable from HEAD.
-func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, branchName string, isDefaultBranch bool, maxAge *time.Time) (_ []string, err error) {
+func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, branchName string, isDefaultBranch bool, maxAge *time.Time) (_ map[string]time.Time, err error) {
 	ctx, endObservation := c.operations.commitsUniqueToBranch.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("repositoryID", repositoryID),
 		log.String("branchName", branchName),
@@ -308,9 +309,9 @@ func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, br
 	}})
 	defer endObservation(1, observation.Args{})
 
-	args := []string{"rev-list"}
+	args := []string{"log", "--pretty=format:%H:%cI"}
 	if maxAge != nil {
-		args = append(args, fmt.Sprintf("--max-age=%s", *maxAge))
+		args = append(args, fmt.Sprintf("--after=%s", *maxAge))
 	}
 	if isDefaultBranch {
 		args = append(args, "HEAD")
@@ -323,7 +324,27 @@ func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, br
 		return nil, err
 	}
 
-	return strings.Split(out, "\n"), nil
+	return parseCommitsUniqueToBranch(strings.Split(out, "\n"))
+}
+
+// TODO - test
+func parseCommitsUniqueToBranch(lines []string) (_ map[string]time.Time, err error) {
+	commitDates := make(map[string]time.Time, len(lines))
+	for _, line := range lines {
+		parts := strings.Split(line, ":")
+		if len(parts) != 2 {
+			return nil, errors.Errorf(`unexpected output from git log "%s"`, line)
+		}
+
+		duration, err := time.Parse(time.RFC3339, parts[1])
+		if err != nil {
+			return nil, errors.Errorf(`unexpected output from git log (bad date format) "%s"`, line)
+		}
+
+		commitDates[parts[0]] = duration
+	}
+
+	return commitDates, nil
 }
 
 // BranchesContaining returns a map from branch names to branch tip hashes for each brach

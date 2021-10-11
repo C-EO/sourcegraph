@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/gitserver"
-	api "github.com/sourcegraph/sourcegraph/internal/api"
 )
 
 // testUploadExpirerMockGitserverClient returns a mock GitserverClient instance that
@@ -13,8 +12,8 @@ import (
 func testUploadExpirerMockGitserverClient(branchMap map[string]map[string]string, tagMap map[string][]string) *MockGitserverClient {
 	gitserverClient := NewMockGitserverClient()
 
-	gitserverClient.ResolveRevisionFunc.SetDefaultHook(func(ctx context.Context, repositoryID int, revlike string) (api.CommitID, error) {
-		return api.CommitID(revlike), nil
+	gitserverClient.CommitDateFunc.SetDefaultHook(func(ctx context.Context, repositoryID int, commit string) (time.Time, error) {
+		return time.Time{}, nil
 	})
 
 	gitserverClient.RefDescriptionsFunc.SetDefaultHook(func(ctx context.Context, repositoryID int) (map[string][]gitserver.RefDescription, error) {
@@ -45,10 +44,11 @@ func testUploadExpirerMockGitserverClient(branchMap map[string]map[string]string
 		return refDescriptions, nil
 	})
 
-	gitserverClient.CommitsUniqueToBranchFunc.SetDefaultHook(func(ctx context.Context, repositoryID int, branchName string, isDefaultBranch bool, maxAge *time.Time) (branches []string, _ error) {
+	gitserverClient.CommitsUniqueToBranchFunc.SetDefaultHook(func(ctx context.Context, repositoryID int, branchName string, isDefaultBranch bool, maxAge *time.Time) (map[string]time.Time, error) {
+		branches := map[string]time.Time{}
 		for commit, branchMap := range branchMap {
 			if _, ok := branchMap[branchName]; ok {
-				branches = append(branches, commit)
+				branches[commit] = time.Time{}
 			}
 		}
 
