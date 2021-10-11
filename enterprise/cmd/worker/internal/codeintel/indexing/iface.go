@@ -19,8 +19,6 @@ import (
 
 type DBStore interface {
 	With(other basestore.ShareableStore) DBStore
-	GetRepositoriesWithIndexConfiguration(ctx context.Context) ([]int, error) // TODO - remove
-	GetAutoindexDisabledRepositories(ctx context.Context) ([]int, error)      // TODO - remove
 	GetUploads(ctx context.Context, opts dbstore.GetUploadsOptions) ([]dbstore.Upload, int, error)
 	GetUploadByID(ctx context.Context, id int) (dbstore.Upload, bool, error)
 	ReferencesForUpload(ctx context.Context, uploadID int) (dbstore.PackageReferenceScanner, error)
