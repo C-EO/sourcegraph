@@ -28,52 +28,6 @@ func TestUploadExpirer(t *testing.T) {
 		4: &d4,
 	}
 
-	globalPolicies := []dbstore.ConfigurationPolicy{
-		{
-			ID:                0,
-			Type:              "GIT_TREE",
-			Pattern:           "main",
-			RetentionEnabled:  true,
-			RetentionDuration: nil, // indefinite
-		},
-		{
-			ID:                2,
-			Type:              "GIT_TREE",
-			Pattern:           "*",
-			RetentionEnabled:  true,
-			RetentionDuration: &d2,
-		},
-		{
-			ID:                3,
-			Type:              "GIT_TAG",
-			Pattern:           "*",
-			RetentionEnabled:  true,
-			RetentionDuration: &d3,
-		},
-	}
-
-	policiesByRepositoryID := map[int][]dbstore.ConfigurationPolicy{
-		50: {
-			dbstore.ConfigurationPolicy{
-				ID:                        4,
-				Type:                      "GIT_TREE",
-				Pattern:                   "ef/*",
-				RetentionEnabled:          true,
-				RetainIntermediateCommits: true,
-				RetentionDuration:         &d4,
-			},
-		},
-		53: {
-			dbstore.ConfigurationPolicy{
-				ID:                1,
-				Type:              "GIT_COMMIT",
-				Pattern:           "deadbeef13",
-				RetentionEnabled:  true,
-				RetentionDuration: &d1,
-			},
-		},
-	}
-
 	now := timeutil.Now()
 	t1 := now.Add(-time.Hour)                 // 1 hour old
 	t2 := now.Add(-time.Hour * 24 * 7)        // 1 week ago
@@ -150,6 +104,52 @@ func TestUploadExpirer(t *testing.T) {
 		// 1 hour old
 		// covered by commit rule (PROTECTED, younger than 1 day)
 		{ID: 13, RepositoryID: 53, Commit: "deadbeef13", State: "completed", UploadedAt: t1},
+	}
+
+	globalPolicies := []dbstore.ConfigurationPolicy{
+		{
+			ID:                0,
+			Type:              "GIT_TREE",
+			Pattern:           "main",
+			RetentionEnabled:  true,
+			RetentionDuration: nil, // indefinite
+		},
+		{
+			ID:                2,
+			Type:              "GIT_TREE",
+			Pattern:           "*",
+			RetentionEnabled:  true,
+			RetentionDuration: &d2,
+		},
+		{
+			ID:                3,
+			Type:              "GIT_TAG",
+			Pattern:           "*",
+			RetentionEnabled:  true,
+			RetentionDuration: &d3,
+		},
+	}
+
+	policiesByRepositoryID := map[int][]dbstore.ConfigurationPolicy{
+		50: {
+			dbstore.ConfigurationPolicy{
+				ID:                        4,
+				Type:                      "GIT_TREE",
+				Pattern:                   "ef/*",
+				RetentionEnabled:          true,
+				RetainIntermediateCommits: true,
+				RetentionDuration:         &d4,
+			},
+		},
+		53: {
+			dbstore.ConfigurationPolicy{
+				ID:                1,
+				Type:              "GIT_COMMIT",
+				Pattern:           "deadbeef13",
+				RetentionEnabled:  true,
+				RetentionDuration: &d1,
+			},
+		},
 	}
 
 	newMatch := func(name string, id int) policies.PolicyMatch {
