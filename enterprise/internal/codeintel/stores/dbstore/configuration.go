@@ -71,7 +71,6 @@ SELECT
 FROM lsif_index_configuration c WHERE c.repository_id = %s
 `
 
-// TODO - test
 // UpdateIndexConfigurationByRepositoryID updates the index configuration for a repository.
 func (s *Store) UpdateIndexConfigurationByRepositoryID(ctx context.Context, repositoryID int, data []byte) (err error) {
 	ctx, endObservation := s.operations.updateIndexConfigurationByRepositoryID.With(ctx, &err, observation.Args{LogFields: []log.Field{
