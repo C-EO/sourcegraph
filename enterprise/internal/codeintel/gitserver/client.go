@@ -296,11 +296,10 @@ func parseRefDescriptions(lines []string) (map[string][]RefDescription, error) {
 	return refDescriptions, nil
 }
 
-// TODO - redocument
-// CommitsUniqueToBranch returns the commits that exist on a particular branch in the given repository. This set
-// of commits is determined by listing `{branchName} ^HEAD`, which is interpreted as: all commits on {branchName}
-// not also on the tip of the default branch. If the supplied branch name is the default branch, then this method
-// instead returns all commits reachable from HEAD.
+// CommitsUniqueToBranch returns a map from commits that exist on a particular branch in the given repository to
+// their committer date. This set of commits is determined by listing `{branchName} ^HEAD`, which is interpreted
+// as: all commits on {branchName} not also on the tip of the default branch. If the supplied branch name is the
+// default branch, then this method instead returns all commits reachable from HEAD.
 func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, branchName string, isDefaultBranch bool, maxAge *time.Time) (_ map[string]time.Time, err error) {
 	ctx, endObservation := c.operations.commitsUniqueToBranch.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("repositoryID", repositoryID),
@@ -327,7 +326,6 @@ func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, br
 	return parseCommitsUniqueToBranch(strings.Split(out, "\n"))
 }
 
-// TODO - test
 func parseCommitsUniqueToBranch(lines []string) (_ map[string]time.Time, err error) {
 	commitDates := make(map[string]time.Time, len(lines))
 	for _, line := range lines {
