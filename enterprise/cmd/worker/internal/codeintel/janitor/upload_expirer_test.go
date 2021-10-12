@@ -15,19 +15,6 @@ import (
 )
 
 func TestUploadExpirer(t *testing.T) {
-	d1 := time.Hour * 24           // 1 day
-	d2 := time.Hour * 24 * 90      // 3 months
-	d3 := time.Hour * 24 * 180     // 6 months
-	d4 := time.Hour * 24 * 365 * 2 // 2 years
-
-	durations := map[int]*time.Duration{
-		0: nil,
-		1: &d1,
-		2: &d2,
-		3: &d3,
-		4: &d4,
-	}
-
 	now := timeutil.Now()
 	t1 := now.Add(-time.Hour)                 // 1 hour old
 	t2 := now.Add(-time.Hour * 24 * 7)        // 1 week ago
@@ -106,6 +93,11 @@ func TestUploadExpirer(t *testing.T) {
 		{ID: 13, RepositoryID: 53, Commit: "deadbeef13", State: "completed", UploadedAt: t1},
 	}
 
+	d1 := time.Hour * 24           // 1 day
+	d2 := time.Hour * 24 * 90      // 3 months
+	d3 := time.Hour * 24 * 180     // 6 months
+	d4 := time.Hour * 24 * 365 * 2 // 2 years
+
 	globalPolicies := []dbstore.ConfigurationPolicy{
 		{
 			ID:                0,
@@ -156,7 +148,7 @@ func TestUploadExpirer(t *testing.T) {
 		return policies.PolicyMatch{
 			Name:           name,
 			PolicyID:       &id,
-			PolicyDuration: durations[id],
+			PolicyDuration: []*time.Duration{nil, &d1, &d2, &d3, &d4}[id],
 		}
 	}
 
@@ -164,18 +156,18 @@ func TestUploadExpirer(t *testing.T) {
 	// the configurationpolicies defined in this test.
 	policyMatches := map[int]map[string][]policies.PolicyMatch{
 		50: {
-			"deadbeef01": {newMatch("develop", 2)},
-			"deadbeef02": {newMatch("feat/blank", 2)},
-			"deadbeef04": {newMatch("v1.2.3", 3)},
-			"deadbeef05": {newMatch("v1.2.2", 3)},
-			"deadbeef06": {newMatch("es/feature-z", 2)},
-			"deadbeef07": {newMatch("ef/feature-x", 2), newMatch("ef/feature-x", 4)},
-			"deadbeef08": {newMatch("ef/feature-x", 4)},
-			"deadbeef09": {newMatch("ef/feature-y", 2), newMatch("ef/feature-y", 4)},
+			"deadbeef01": {newMatch("develop", 2)},                                   // 3 months
+			"deadbeef02": {newMatch("feat/blank", 2)},                                // 3 months
+			"deadbeef04": {newMatch("v1.2.3", 3)},                                    // 6 months
+			"deadbeef05": {newMatch("v1.2.2", 3)},                                    // 6 months
+			"deadbeef06": {newMatch("es/feature-z", 2)},                              // 3 months
+			"deadbeef07": {newMatch("ef/feature-x", 2), newMatch("ef/feature-x", 4)}, // 3 months; 2 years
+			"deadbeef08": {newMatch("ef/feature-x", 4)},                              // 2 years
+			"deadbeef09": {newMatch("ef/feature-y", 2), newMatch("ef/feature-y", 4)}, // 3 months; 2 years
 		},
-		51: {"deadbeef10": {newMatch("ef/feature-w", 2)}},
-		52: {"deadbeef11": {newMatch("main", 0), newMatch("main", 2)}},
-		53: {"deadbeef13": {newMatch("deadbeef13", 1)}},
+		51: {"deadbeef10": {newMatch("ef/feature-w", 2)}},              // 3 months
+		52: {"deadbeef11": {newMatch("main", 0), newMatch("main", 2)}}, // forever; 3 months
+		53: {"deadbeef13": {newMatch("deadbeef13", 1)}},                // 1 day
 	}
 
 	dbStore := testUploadExpirerMockDBStore(globalPolicies, policiesByRepositoryID, uploads)
@@ -220,5 +212,23 @@ func TestUploadExpirer(t *testing.T) {
 	expectedExpiredIDs := []int{3, 5, 6, 9, 10, 12}
 	if diff := cmp.Diff(expectedExpiredIDs, expiredIDs); diff != "" {
 		t.Errorf("unexpected expired upload identifiers (-want +got):\n%s", diff)
+	}
+
+	calls := policyMatcher.CommitsDescribedByPolicyFunc.History()
+	if len(calls) != 4 {
+		t.Fatalf("unexpected number of calls to CommitsDescribedByPolicy. want=%d have=%d", 4, len(calls))
+	}
+
+	expectedPolicies := map[int][]dbstore.ConfigurationPolicy{
+		50: append(globalPolicies, policiesByRepositoryID[50]...),
+		51: globalPolicies,
+		52: globalPolicies,
+		53: append(globalPolicies, policiesByRepositoryID[53]...),
+	}
+
+	for _, call := range calls {
+		if diff := cmp.Diff(expectedPolicies[call.Arg1], call.Arg2); diff != "" {
+			t.Errorf("unexpected policies supplied to CommitsDescribedByPolicy (-want +got):\n%s", diff)
+		}
 	}
 }
