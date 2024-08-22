@@ -25,11 +25,14 @@
         &#{ $self }--horizontal {
             grid-template-areas: 'chart legend';
             grid-template-columns: auto minmax(10rem, 30%);
-            grid-template-rows: auto;
 
             .legend-list {
                 flex-wrap: nowrap;
                 flex-direction: column;
+            }
+
+            .legend-list-item {
+                width: 100%;
             }
         }
     }
@@ -38,7 +41,17 @@
 .responsive-container {
     grid-area: chart;
     position: relative;
+
+    // Without overflow hidden parent size container measures sizes
+    // incorrectly within the chart containers.
     overflow: hidden;
+
+    // Since this container has overflow hidden inner chart block focus ring
+    // styles is cutting off, re-add focus ring styles on this block instead
+    &:focus,
+    &:focus-within {
+        box-shadow: var(--focus-box-shadow);
+    }
 
     &:hover,
     &:focus-within {
@@ -56,7 +69,8 @@
 
 .legend-list-container {
     grid-area: legend;
-    overflow: hidden;
+    // Visually compensate legend list items padding spacings
+    margin: -0.125rem -0.25rem;
 
     &::-webkit-scrollbar {
         width: 0.25rem;
@@ -74,13 +88,30 @@
     }
 }
 
+.legend-list {
+    // Reset standard legend list gaps, list items will handle
+    // x and y spacing themselves.
+    column-gap: 0;
+    row-gap: 0;
+}
+
 .legend-list-item {
     // Reset wildcard button styles
-    padding: 0;
     margin: 0;
     font-weight: normal;
     font-size: inherit;
     text-align: left;
+    line-height: inherit;
+    display: flex;
+    border: none;
+    padding: 0.125rem 0.25rem;
+
+    &--interactive {
+        &:hover,
+        &:focus {
+            background-color: var(--secondary-2);
+        }
+    }
 }
 
 .alert-overlay {
@@ -90,12 +121,6 @@
     z-index: 1;
 }
 
-.timeout-icon {
-    display: flex;
-    padding: 0 0.25rem;
-}
-
-.troubleshoot-link {
-    // A special link color override for the link within the tooltip UI case
-    --link-color: #4393e7;
+.legend-incomplete-alert {
+    padding-left: 0;
 }

@@ -1,9 +1,10 @@
-import { Suspense, FC } from 'react'
+import { Suspense, type FC, memo, useMemo } from 'react'
 
 import { mdiPlus } from '@mdi/js'
-import { useHistory } from 'react-router'
+import { useParams, useNavigate } from 'react-router-dom'
 
-import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
+import { TelemetryV2Props } from '@sourcegraph/shared/src/telemetry'
+import type { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { lazyComponent } from '@sourcegraph/shared/src/util/lazyComponent'
 import {
     Button,
@@ -16,14 +17,17 @@ import {
     TabPanels,
     TabPanel,
     LoadingSpinner,
+    useObservable,
+    Tooltip,
 } from '@sourcegraph/wildcard'
 
 import { CodeInsightsIcon } from '../../../insights/Icons'
 import { CodeInsightsPage } from '../components'
-import { ALL_INSIGHTS_DASHBOARD } from '../constants'
-import { useQueryParameters } from '../hooks'
+import { useQueryParameters, useUiFeatures } from '../hooks'
+import { encodeDashboardIdQueryParam } from '../routers.constant'
 
-import { DashboardsContentPage } from './dashboards/dashboard-page/DashboardsContentPage'
+import { AllInsightsView } from './all-insights-view'
+import { DashboardsView } from './dashboards/dashboard-view/DashboardsView'
 
 import styles from './CodeInsightsRootPage.module.scss'
 
@@ -33,27 +37,43 @@ const LazyCodeInsightsGettingStartedPage = lazyComponent(
 )
 
 export enum CodeInsightsRootPageTab {
-    CodeInsights,
+    Dashboards,
+    AllInsights,
     GettingStarted,
 }
 
-interface CodeInsightsRootPageProps extends TelemetryProps {
+interface CodeInsightsRootPageProps extends TelemetryProps, TelemetryV2Props {
     dashboardId?: string
-    activeView: CodeInsightsRootPageTab
+    activeTab: CodeInsightsRootPageTab
 }
 
-export const CodeInsightsRootPage: FC<CodeInsightsRootPageProps> = props => {
-    const { dashboardId, activeView, telemetryService } = props
+export const CodeInsightsRootPage: FC<CodeInsightsRootPageProps> = memo(props => {
+    const { activeTab, telemetryService, telemetryRecorder } = props
 
-    const history = useHistory()
-    const { dashboardId: queryParamDashboardId = ALL_INSIGHTS_DASHBOARD.id } = useQueryParameters(['dashboardId'])
+    const navigate = useNavigate()
+    const { dashboardId } = useParams()
+    const { dashboardId: queryParameterDashboardId } = useQueryParameters(['dashboardId'])
+
+    // Set either active dashboard from the dashboard tab param (dashboard)
+    // or dashboard id from URL query param in case if we're on the about tab or
+    // the all insights tab.
+    const absoluteDashboardId = dashboardId ?? queryParameterDashboardId
 
     const handleTabNavigationChange = (selectedTab: CodeInsightsRootPageTab): void => {
         switch (selectedTab) {
-            case CodeInsightsRootPageTab.CodeInsights:
-                return history.push(`/insights/dashboards/${queryParamDashboardId}`)
-            case CodeInsightsRootPageTab.GettingStarted:
-                return history.push(`/insights/about?dashboardId=${dashboardId}`)
+            case CodeInsightsRootPageTab.Dashboards: {
+                if (queryParameterDashboardId) {
+                    return navigate(`/insights/dashboards/${queryParameterDashboardId}`)
+                }
+
+                return navigate('/insights/dashboards')
+            }
+            case CodeInsightsRootPageTab.AllInsights: {
+                return navigate(encodeDashboardIdQueryParam('/insights/all', absoluteDashboardId))
+            }
+            case CodeInsightsRootPageTab.GettingStarted: {
+                return navigate(encodeDashboardIdQueryParam('/insights/about', absoluteDashboardId))
+            }
         }
     }
 
@@ -61,42 +81,64 @@ export const CodeInsightsRootPage: FC<CodeInsightsRootPageProps> = props => {
         <CodeInsightsPage>
             <PageHeader
                 path={[{ icon: CodeInsightsIcon, text: 'Insights' }]}
-                actions={<CodeInsightHeaderActions dashboardId={dashboardId} telemetryService={telemetryService} />}
+                actions={
+                    <CodeInsightHeaderActions
+                        dashboardId={absoluteDashboardId}
+                        telemetryService={telemetryService}
+                        telemetryRecorder={telemetryRecorder}
+                    />
+                }
                 className={styles.header}
             />
 
             <Tabs
-                index={activeView}
+                index={activeTab}
                 lazy={true}
                 size="medium"
                 className={styles.tabs}
                 onChange={handleTabNavigationChange}
             >
                 <TabList>
-                    <Tab index={CodeInsightsRootPageTab.CodeInsights}>Code Insights</Tab>
+                    <Tab index={CodeInsightsRootPageTab.Dashboards}>Dashboards</Tab>
+                    <Tab index={CodeInsightsRootPageTab.AllInsights}>All insights</Tab>
                     <Tab index={CodeInsightsRootPageTab.GettingStarted}>Getting started</Tab>
                 </TabList>
                 <TabPanels className={styles.tabPanels}>
-                    <TabPanel>
-                        <DashboardsContentPage telemetryService={telemetryService} dashboardID={dashboardId} />
+                    <TabPanel tabIndex={-1}>
+                        <DashboardsView
+                            dashboardId={dashboardId}
+                            telemetryService={telemetryService}
+                            telemetryRecorder={telemetryRecorder}
+                        />
                     </TabPanel>
-                    <TabPanel>
+                    <TabPanel tabIndex={-1}>
+                        <AllInsightsView telemetryService={telemetryService} telemetryRecorder={telemetryRecorder} />
+                    </TabPanel>
+                    <TabPanel tabIndex={-1}>
                         <Suspense fallback={<LoadingSpinner aria-label="Loading Code Insights Getting started page" />}>
-                            <LazyCodeInsightsGettingStartedPage telemetryService={telemetryService} />
+                            <LazyCodeInsightsGettingStartedPage
+                                telemetryService={telemetryService}
+                                telemetryRecorder={telemetryRecorder}
+                            />
                         </Suspense>
                     </TabPanel>
                 </TabPanels>
             </Tabs>
         </CodeInsightsPage>
     )
-}
+})
 
-interface CodeInsightHeaderActionsProps extends TelemetryProps {
+interface CodeInsightHeaderActionsProps extends TelemetryProps, TelemetryV2Props {
     dashboardId?: string
 }
 
 const CodeInsightHeaderActions: FC<CodeInsightHeaderActionsProps> = props => {
-    const { dashboardId, telemetryService } = props
+    const { dashboardId, telemetryService, telemetryRecorder } = props
+
+    const { insight } = useUiFeatures()
+    const creationPermission = useObservable(useMemo(() => insight.getCreationPermissions(), [insight]))
+
+    const available = creationPermission?.available ?? false
 
     return (
         <>
@@ -109,14 +151,21 @@ const CodeInsightHeaderActions: FC<CodeInsightHeaderActionsProps> = props => {
             >
                 <Icon aria-hidden={true} svgPath={mdiPlus} /> Add dashboard
             </Button>
-            <Button
-                as={Link}
-                to={`/insights/create?dashboardId=${dashboardId}`}
-                variant="primary"
-                onClick={() => telemetryService.log('InsightAddMoreClick')}
-            >
-                <Icon aria-hidden={true} svgPath={mdiPlus} /> Create insight
-            </Button>
+
+            <Tooltip content={!available ? 'You have reached your insights limit' : null}>
+                <Button
+                    as={Link}
+                    to={encodeDashboardIdQueryParam('/insights/create', dashboardId)}
+                    variant="primary"
+                    onClick={() => {
+                        telemetryService.log('InsightAddMoreClick')
+                        telemetryRecorder.recordEvent('insight.add', 'click')
+                    }}
+                    disabled={!available}
+                >
+                    <Icon aria-hidden={true} svgPath={mdiPlus} /> Create insight
+                </Button>
+            </Tooltip>
         </>
     )
 }

@@ -1,9 +1,9 @@
-import { ReactElement } from 'react'
+import type { ReactElement } from 'react'
 
 import { H3, Text } from '../../../../Typography'
 import { DEFAULT_FALLBACK_COLOR } from '../../../constants'
 import { TooltipList, TooltipListItem } from '../../../core'
-import { Category } from '../utils/get-grouped-categories'
+import type { Category } from '../utils/get-grouped-categories'
 
 import styles from './TooltipContent.module.scss'
 
@@ -18,15 +18,8 @@ interface BarTooltipContentProps<Datum> {
 }
 
 export function BarTooltipContent<Datum>(props: BarTooltipContentProps<Datum>): ReactElement {
-    const {
-        category,
-        getDatumName,
-        getDatumHover,
-        getDatumHoverValueLabel,
-        getDatumValue,
-        getDatumColor,
-        activeBar,
-    } = props
+    const { category, getDatumName, getDatumHover, getDatumHoverValueLabel, getDatumValue, getDatumColor, activeBar } =
+        props
     const getName = getDatumHover ?? getDatumName
     const activeDatumHover = getName(activeBar)
 

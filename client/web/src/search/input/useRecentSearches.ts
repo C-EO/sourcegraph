@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { logger } from '@sourcegraph/common'
 import { gql, useLazyQuery } from '@sourcegraph/http-client'
-import { getGlobalSearchContextFilter } from '@sourcegraph/shared/src/search/query/query'
-import { omitFilter } from '@sourcegraph/shared/src/search/query/transformer'
-import { RecentSearch } from '@sourcegraph/shared/src/settings/temporary/recentSearches'
+import type { RecentSearch } from '@sourcegraph/shared/src/settings/temporary/recentSearches'
 import { useTemporarySetting } from '@sourcegraph/shared/src/settings/temporary/useTemporarySetting'
 
-import { SearchHistoryEventLogsQueryResult, SearchHistoryEventLogsQueryVariables } from '../../graphql-operations'
+import type { SearchHistoryEventLogsQueryResult, SearchHistoryEventLogsQueryVariables } from '../../graphql-operations'
+
+import { RecentSearchesManager } from './recentSearches'
 
 const MAX_RECENT_SEARCHES = 20
 
@@ -15,7 +15,7 @@ export const SEARCH_HISTORY_EVENT_LOGS_QUERY = gql`
     query SearchHistoryEventLogsQuery($first: Int!) {
         currentUser {
             __typename
-            recentSearchLogs: eventLogs(first: $first, eventName: "SearchResultsQueried") {
+            recentSearchLogs: eventLogs(first: $first, eventName: "SearchResultsFetched") {
                 nodes {
                     argument
                     timestamp
@@ -30,11 +30,12 @@ export const SEARCH_HISTORY_EVENT_LOGS_QUERY = gql`
 // the user's recent searches from the event log.
 export function useRecentSearches(): {
     recentSearches: RecentSearch[] | undefined
-    addRecentSearch: (query: string) => void
+    addRecentSearch: (query: string, resultCount: number, limitHit: boolean) => void
     state: 'loading' | 'success'
 } {
     const [recentSearches, setRecentSearches] = useTemporarySetting('search.input.recentSearches', [])
     const [state, setState] = useState<'loading' | 'success'>('loading')
+    const recentSearchesManager = useRef(new RecentSearchesManager({ persist: setRecentSearches }))
 
     // If recentSearches from temporary settings is empty, fetch recent searches from the event log
     // and populate temporary settings with that instead.
@@ -53,12 +54,14 @@ export function useRecentSearches(): {
     useEffect(() => {
         if (state !== 'success' && recentSearches) {
             if (recentSearches && recentSearches.length > 0) {
+                recentSearchesManager.current.setRecentSearches(recentSearches)
                 setState('success')
             } else {
                 loadFromEventLog()
                     .then(result => {
                         if (result.data) {
                             const processedLogs = processEventLogs(result.data)
+                            recentSearchesManager.current.setRecentSearches(processedLogs)
                             setRecentSearches(processedLogs)
                         }
                         setState('success')
@@ -69,27 +72,7 @@ export function useRecentSearches(): {
                     })
             }
         }
-    }, [recentSearches, loadFromEventLog, setRecentSearches, state])
-
-    // Adds a new search to the top of the recent searches list.
-    // If the search is already in the recent searches list, it moves it to the top.
-    // If the list is full, the oldest search is removed.
-    const addOrMoveRecentSearchToTop = useCallback(
-        (recentSearch: RecentSearch) => {
-            setRecentSearches(recentSearches => {
-                const newRecentSearches = recentSearches?.filter(search => search.query !== recentSearch.query) || []
-                newRecentSearches.unshift(recentSearch)
-                // Truncate array if it's too long
-                if (newRecentSearches.length > MAX_RECENT_SEARCHES) {
-                    newRecentSearches.splice(MAX_RECENT_SEARCHES)
-                }
-                return newRecentSearches
-            })
-        },
-        [setRecentSearches]
-    )
-
-    const [pendingAdditions, setPendingAdditions] = useState<RecentSearch[]>([])
+    }, [recentSearches, loadFromEventLog, recentSearchesManager, state, setRecentSearches])
 
     // Adds non-empty queries. A query is considered empty if it's an empty
     // string or only contains a context: filter.
@@ -98,30 +81,11 @@ export function useRecentSearches(): {
     // If the search is being added before the list is finished loading,
     // queue it to be added after loading is complete.
     const addRecentSearch = useCallback(
-        (query: string) => {
-            const searchContext = getGlobalSearchContextFilter(query)
-            if (!searchContext || omitFilter(query, searchContext.filter).trim() !== '') {
-                const recentSearch = { query, timestamp: new Date().toISOString() }
-
-                if (state === 'success') {
-                    addOrMoveRecentSearchToTop(recentSearch)
-                } else {
-                    setPendingAdditions(pendingAdditions => pendingAdditions.concat(recentSearch))
-                }
-            }
+        (query: string, resultCount: number, limitHit: boolean) => {
+            recentSearchesManager.current.addRecentSearch({ query, resultCount, limitHit })
         },
-        [addOrMoveRecentSearchToTop, state]
+        [recentSearchesManager]
     )
-
-    // Process the queue of pending additions after the list is finished loading.
-    useEffect(() => {
-        if (state === 'success' && pendingAdditions.length > 0) {
-            for (const pendingAddition of pendingAdditions) {
-                addOrMoveRecentSearchToTop(pendingAddition)
-            }
-            setPendingAdditions([])
-        }
-    }, [addOrMoveRecentSearchToTop, pendingAdditions, state])
 
     return { recentSearches, addRecentSearch, state }
 }
@@ -132,12 +96,23 @@ function processEventLogs(data: SearchHistoryEventLogsQueryResult): RecentSearch
     }
     const searches = data.currentUser.recentSearchLogs.nodes
         .filter(node => node.argument && node.timestamp)
-        .map(node => ({
-            // This JSON.parse is safe, silence any TS linting warnings.
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-non-null-assertion
-            query: JSON.parse(node.argument!)?.code_search?.query_data?.combined,
-            timestamp: node.timestamp,
-        }))
+        .map(node => {
+            const argument = node.argument
+                ? (JSON.parse(node.argument) as {
+                      code_search?: {
+                          results?: { results_count?: number; limit_hit?: boolean }
+                          query_data?: { combined?: string }
+                      }
+                  })
+                : {}
+
+            return {
+                query: argument.code_search?.query_data?.combined || '',
+                resultCount: argument.code_search?.results?.results_count || 0,
+                limitHit: argument.code_search?.results?.limit_hit || false,
+                timestamp: node.timestamp,
+            }
+        })
         .filter(search => search.query)
         .filter(
             // Remove duplicates
@@ -145,6 +120,5 @@ function processEventLogs(data: SearchHistoryEventLogsQueryResult): RecentSearch
             // If a search appears earlier in the list, it is a duplicate.
             (search, index, self) => index === self.findIndex(item => item.query === search.query)
         )
-
     return searches
 }

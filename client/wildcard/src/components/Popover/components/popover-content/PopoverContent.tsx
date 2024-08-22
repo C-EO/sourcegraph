@@ -1,15 +1,16 @@
-import { forwardRef, useContext, useEffect, useState, FC, PropsWithChildren } from 'react'
+import { forwardRef, useContext, useEffect, useState, type FC, type PropsWithChildren } from 'react'
 
 import classNames from 'classnames'
 import FocusLock from 'react-focus-lock'
 import { useMergeRefs } from 'use-callback-ref'
 
 import { useKeyboard, useOnClickOutside } from '../../../../hooks'
-import { ForwardReferenceComponent } from '../../../../types'
+import type { ForwardReferenceComponent } from '../../../../types'
 import { PopoverContext } from '../../contexts/internal-context'
 import { PopoverRoot } from '../../contexts/public-context'
-import { PopoverOpenEvent, PopoverOpenEventReason } from '../../types'
-import { FloatingPanel, FloatingPanelProps } from '../floating-panel/FloatingPanel'
+import type { TetherInstanceAPI } from '../../tether'
+import { type PopoverOpenEvent, PopoverOpenEventReason } from '../../types'
+import { FloatingPanel, type FloatingPanelProps } from '../floating-panel/FloatingPanel'
 
 import styles from './PopoverContent.module.scss'
 
@@ -20,7 +21,9 @@ export interface PopoverContentProps extends Omit<FloatingPanelProps, 'target' |
     autoFocus?: boolean
     focusLocked?: boolean
     returnTargetFocus?: boolean
+    focusContainerClassName?: string
 
+    onTetherCreate?: (tether: TetherInstanceAPI) => void
     onOpenChange?: (event: PopoverOpenEvent) => void
 }
 
@@ -36,7 +39,9 @@ export const PopoverContent = forwardRef(function PopoverContent(props, referenc
         returnTargetFocus = true,
         'aria-modal': ariaModal = true,
         role = 'dialog',
+        focusContainerClassName,
         onOpenChange: onOpenChangeProp,
+        onTetherCreate,
         ...otherProps
     } = props
 
@@ -94,6 +99,7 @@ export const PopoverContent = forwardRef(function PopoverContent(props, referenc
             aria-modal={ariaModal}
             rootRender={renderRoot}
             className={classNames(styles.popover, otherProps.className)}
+            onTetherCreate={onTetherCreate}
         >
             <FloatingPanelContent
                 autoFocus={true}
@@ -101,6 +107,7 @@ export const PopoverContent = forwardRef(function PopoverContent(props, referenc
                 focusLocked={focusLocked}
                 popoverElement={popover}
                 targetElement={target}
+                className={focusContainerClassName}
             >
                 {children}
             </FloatingPanelContent>
@@ -114,10 +121,11 @@ interface FloatingPanelContentProps {
     returnTargetFocus: boolean
     popoverElement: HTMLElement | null
     targetElement: HTMLElement | null
+    className?: string
 }
 
 const FloatingPanelContent: FC<PropsWithChildren<FloatingPanelContentProps>> = props => {
-    const { children, focusLocked, autoFocus, returnTargetFocus, popoverElement, targetElement } = props
+    const { children, focusLocked, autoFocus, returnTargetFocus, popoverElement, targetElement, className } = props
 
     const [focusLock, setFocusLock] = useState(false)
 
@@ -154,7 +162,7 @@ const FloatingPanelContent: FC<PropsWithChildren<FloatingPanelContentProps>> = p
     }
 
     return (
-        <FocusLock disabled={!focusLock} returnFocus={returnTargetFocus}>
+        <FocusLock disabled={!focusLock} returnFocus={returnTargetFocus} className={className}>
             {children}
         </FocusLock>
     )

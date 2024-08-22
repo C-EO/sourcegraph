@@ -1,9 +1,7 @@
 import { mdiMagnify, mdiPlus, mdiPuzzleOutline } from '@mdi/js'
-import { DecoratorFn, Meta, Story } from '@storybook/react'
+import type { Decorator, Meta, StoryFn } from '@storybook/react'
 
-import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
-import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
-
+import { BrandedStory } from '../../stories/BrandedStory'
 import { Button } from '../Button'
 import { FeedbackBadge } from '../Feedback'
 import { Icon } from '../Icon'
@@ -12,8 +10,8 @@ import { H1, H2 } from '../Typography'
 
 import { PageHeader } from './PageHeader'
 
-const decorator: DecoratorFn = story => (
-    <BrandedStory styles={webStyles}>{() => <div className="container mt-3">{story()}</div>}</BrandedStory>
+const decorator: Decorator = story => (
+    <BrandedStory>{() => <div className="container mt-3">{story()}</div>}</BrandedStory>
 )
 
 const config: Meta = {
@@ -24,7 +22,7 @@ const config: Meta = {
 
 export default config
 
-export const BasicHeader: Story = () => (
+export const BasicHeader: StoryFn = () => (
     <>
         <H1>Page Header</H1>
         <H2>Basic</H2>
@@ -44,8 +42,7 @@ export const BasicHeader: Story = () => (
                 path={[
                     {
                         icon: mdiPuzzleOutline,
-                        text:
-                            'Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.',
+                        text: 'Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.',
                     },
                 ]}
             />
@@ -59,14 +56,13 @@ BasicHeader.parameters = {
     design: {
         type: 'figma',
         name: 'Figma',
-        url:
-            'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Design-Refresh-Systemization-source-of-truth?node-id=1485%3A0',
+        url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Design-Refresh-Systemization-source-of-truth?node-id=1485%3A0',
     },
 }
 
-export const ComplexHeader: Story = () => (
+export const ComplexHeader: StoryFn = () => (
     <PageHeader
-        annotation={<FeedbackBadge status="prototype" feedback={{ mailto: 'support@sourcegraph.com' }} />}
+        annotation={<FeedbackBadge status="experimental" feedback={{ mailto: 'support@sourcegraph.com' }} />}
         byline={
             <>
                 Created by <Link to="/page">user</Link> 3 months ago
@@ -98,14 +94,9 @@ export const ComplexHeader: Story = () => (
 ComplexHeader.storyName = 'Complex header'
 
 ComplexHeader.parameters = {
-    chromatic: {
-        enableDarkMode: true,
-        disableSnapshot: false,
-    },
     design: {
         type: 'figma',
         name: 'Figma',
-        url:
-            'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Design-Refresh-Systemization-source-of-truth?node-id=1485%3A0',
+        url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Design-Refresh-Systemization-source-of-truth?node-id=1485%3A0',
     },
 }

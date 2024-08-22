@@ -2,12 +2,13 @@ import React, { useMemo, useState, useEffect } from 'react'
 
 import classNames from 'classnames'
 
-import { TemporarySettingsSchema } from '@sourcegraph/shared/src/settings/temporary/TemporarySettings'
+import type { TemporarySettingsSchema } from '@sourcegraph/shared/src/settings/temporary/TemporarySettings'
 import { useTemporarySetting } from '@sourcegraph/shared/src/settings/temporary/useTemporarySetting'
+import type { TelemetryV2Props } from '@sourcegraph/shared/src/telemetry'
+import { EVENT_LOGGER } from '@sourcegraph/shared/src/telemetry/web/eventLogger'
 import { Card, Input, Text, H2 } from '@sourcegraph/wildcard'
 
 import { AnalyticsDateRange } from '../../../graphql-operations'
-import { eventLogger } from '../../../tracking/eventLogger'
 import { formatNumber } from '../utils'
 
 import styles from './index.module.scss'
@@ -24,8 +25,8 @@ interface TimeSavedCalculatorGroupItem {
     hoursSaved?: number
 }
 
-interface TimeSavedCalculatorGroupProps {
-    page: string
+export interface TimeSavedCalculatorGroupProps extends TelemetryV2Props {
+    page: CalculatorPages
     color: string
     value: number
     itemsLabel?: string
@@ -33,6 +34,16 @@ interface TimeSavedCalculatorGroupProps {
     description: string
     dateRange: AnalyticsDateRange
     items: TimeSavedCalculatorGroupItem[]
+}
+
+type CalculatorPages = 'CodeIntel' | 'Extensions' | 'Search' | 'BatchChanges' | 'Notebooks'
+
+const v2CalculatorPageTypes = {
+    CodeIntel: 1,
+    Extensions: 2,
+    Search: 3,
+    BatchChanges: 4,
+    Notebooks: 5,
 }
 
 const calculateHoursSaved = (
@@ -52,6 +63,7 @@ export const TimeSavedCalculatorGroup: React.FunctionComponent<TimeSavedCalculat
     description,
     label,
     dateRange,
+    telemetryRecorder,
 }) => {
     const [memoizedItems, setMemoizedItems] = useState(calculateHoursSaved(items))
     const [minutesInputChangeLogs, setMinutesInputChangeLogs] = useState<{ [index: number]: boolean }>({})
@@ -65,9 +77,10 @@ export const TimeSavedCalculatorGroup: React.FunctionComponent<TimeSavedCalculat
         setMemoizedItems(calculateHoursSaved(items))
     }, [items])
 
-    const totalSavedHours = useMemo(() => memoizedItems.reduce((sum, item) => sum + item.hoursSaved, 0), [
-        memoizedItems,
-    ])
+    const totalSavedHours = useMemo(
+        () => memoizedItems.reduce((sum, item) => sum + item.hoursSaved, 0),
+        [memoizedItems]
+    )
 
     const updateMinPerItem = (index: number, minPerItem: number): void => {
         const updatedItems = [...memoizedItems]
@@ -209,7 +222,14 @@ export const TimeSavedCalculatorGroup: React.FunctionComponent<TimeSavedCalculat
                                                 ...percentageInputChangeLogs,
                                                 [index]: true,
                                             })
-                                            eventLogger.log(`AdminAnalytics${page}PercentageInputEdited`)
+                                            EVENT_LOGGER.log(`AdminAnalytics${page}PercentageInputEdited`)
+                                            telemetryRecorder.recordEvent(
+                                                'admin.analytics.calculator.percentageInput',
+                                                'edit',
+                                                {
+                                                    metadata: { page: v2CalculatorPageTypes[page] },
+                                                }
+                                            )
                                         }
                                     }}
                                 />
@@ -234,7 +254,14 @@ export const TimeSavedCalculatorGroup: React.FunctionComponent<TimeSavedCalculat
                                             ...minutesInputChangeLogs,
                                             [index]: true,
                                         })
-                                        eventLogger.log(`AdminAnalytics${page}MinutesInputEdited`)
+                                        EVENT_LOGGER.log(`AdminAnalytics${page}MinutesInputEdited`)
+                                        telemetryRecorder.recordEvent(
+                                            'admin.analytics.calculator.minutesInput',
+                                            'edit',
+                                            {
+                                                metadata: { page: v2CalculatorPageTypes[page] },
+                                            }
+                                        )
                                     }
                                 }}
                             />
@@ -252,8 +279,8 @@ export const TimeSavedCalculatorGroup: React.FunctionComponent<TimeSavedCalculat
     )
 }
 
-export interface TimeSavedCalculatorProps {
-    page: string
+export interface TimeSavedCalculatorProps extends TelemetryV2Props {
+    page: CalculatorPages
     color: string
     label: string
     value: number
@@ -274,15 +301,15 @@ export const TimeSavedCalculator: React.FunctionComponent<TimeSavedCalculatorPro
     percentage,
     dateRange,
     temporarySettingsKey,
+    telemetryRecorder,
 }) => {
     const [minPerItemSavedSetting, setMinPerItemSaved] = useTemporarySetting(temporarySettingsKey, defaultMinPerItem)
     const minPerItemSaved = Number(minPerItemSavedSetting) || defaultMinPerItem
     const [inputChangeLogged, setInputChangeLogged] = useState(false)
-    const hoursSaved = useMemo(() => (minPerItemSaved * value * (percentage ?? 100)) / (60 * 100), [
-        value,
-        minPerItemSaved,
-        percentage,
-    ])
+    const hoursSaved = useMemo(
+        () => (minPerItemSaved * value * (percentage ?? 100)) / (60 * 100),
+        [value, minPerItemSaved, percentage]
+    )
 
     const projectedHoursSaved = useMemo(() => {
         if (dateRange === AnalyticsDateRange.LAST_WEEK) {
@@ -319,7 +346,10 @@ export const TimeSavedCalculator: React.FunctionComponent<TimeSavedCalculatorPro
                                 setMinPerItemSaved(Number(event.target.value))
                                 if (!inputChangeLogged) {
                                     setInputChangeLogged(true)
-                                    eventLogger.log(`AdminAnalytics${page}MinutesInputEdited`)
+                                    EVENT_LOGGER.log(`AdminAnalytics${page}MinutesInputEdited`)
+                                    telemetryRecorder.recordEvent('admin.analytics.calculator.mintuesInput', 'edit', {
+                                        metadata: { page: v2CalculatorPageTypes[page] },
+                                    })
                                 }
                             }}
                         />

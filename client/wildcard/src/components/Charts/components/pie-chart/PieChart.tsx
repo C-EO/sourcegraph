@@ -1,12 +1,12 @@
-import { ReactElement, SVGProps, useMemo, useState } from 'react'
+import { type ReactElement, type SVGProps, useMemo, useState } from 'react'
 
 import { Group } from '@visx/group'
-import Pie, { PieArcDatum } from '@visx/shape/lib/shapes/Pie'
+import Pie, { type PieArcDatum } from '@visx/shape/lib/shapes/Pie'
 import classNames from 'classnames'
 import { noop } from 'rxjs'
 
 import { MaybeLink } from '../../core'
-import { CategoricalLikeChart } from '../../types'
+import type { CategoricalLikeChart } from '../../types'
 
 import { PieArc } from './components/PieArc'
 
@@ -50,10 +50,10 @@ export function PieChart<Datum>(props: PieChartProps<Datum>): ReactElement | nul
     // order of rendering matters) we have to render additional PieArcs on
     // top of other arcs to visually bring hovered arcs to the top layer.
     const [hoveredArc, setHoveredArc] = useState<PieArcDatum<Datum> | null>(null)
-    const sortedData = useMemo(() => [...data].sort((first, second) => getDatumValue(second) - getDatumValue(first)), [
-        data,
-        getDatumValue,
-    ])
+    const sortedData = useMemo(
+        () => [...data].sort((first, second) => getDatumValue(second) - getDatumValue(first)),
+        [data, getDatumValue]
+    )
 
     const innerWidth = width - padding.left - padding.right
     const innerHeight = height - padding.top - padding.bottom

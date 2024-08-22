@@ -26,17 +26,19 @@ export const GET_INSIGHT_VIEW_GQL = gql`
         points {
             dateTime
             value
+            pointInTimeQuery
         }
         status {
-            backfillQueuedAt
-            completedJobs
-            pendingJobs
-            failedJobs
             isLoadingData
             incompleteDatapoints {
-                ... on IncompleteDatapointAlert {
+                ... on TimeoutDatapointAlert {
                     __typename
                     time
+                }
+                ... on GenericIncompleteDatapointAlert {
+                    __typename
+                    time
+                    reason
                 }
             }
         }

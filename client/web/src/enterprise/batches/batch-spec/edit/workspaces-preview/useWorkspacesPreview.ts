@@ -4,18 +4,18 @@ import { useLazyQuery, useMutation, useQuery } from '@sourcegraph/http-client'
 import { screenReaderAnnounce } from '@sourcegraph/wildcard'
 
 import {
-    CreateBatchSpecFromRawResult,
-    CreateBatchSpecFromRawVariables,
-    ReplaceBatchSpecInputResult,
-    ReplaceBatchSpecInputVariables,
-    Scalars,
+    type CreateBatchSpecFromRawResult,
+    type CreateBatchSpecFromRawVariables,
+    type ReplaceBatchSpecInputResult,
+    type ReplaceBatchSpecInputVariables,
+    type Scalars,
     BatchSpecWorkspaceResolutionState,
-    WorkspaceResolutionStatusVariables,
-    WorkspaceResolutionStatusResult,
-    BatchSpecWorkspacesPreviewResult,
-    BatchSpecWorkspacesPreviewVariables,
-    BatchSpecImportingChangesetsVariables,
-    BatchSpecImportingChangesetsResult,
+    type WorkspaceResolutionStatusVariables,
+    type WorkspaceResolutionStatusResult,
+    type BatchSpecWorkspacesPreviewResult,
+    type BatchSpecWorkspacesPreviewVariables,
+    type BatchSpecImportingChangesetsVariables,
+    type BatchSpecImportingChangesetsResult,
 } from '../../../../../graphql-operations'
 import {
     CREATE_BATCH_SPEC_FROM_RAW,
@@ -26,7 +26,7 @@ import {
 } from '../../../create/backend'
 
 import { CHANGESETS_PER_PAGE_COUNT } from './useImportingChangesets'
-import { WORKSPACES_PER_PAGE_COUNT, WorkspacePreviewFilters } from './useWorkspaces'
+import { WORKSPACES_PER_PAGE_COUNT, type WorkspacePreviewFilters } from './useWorkspaces'
 
 export type ResolutionState = BatchSpecWorkspaceResolutionState | 'UNSTARTED' | 'CANCELED'
 
@@ -54,6 +54,8 @@ export interface UseWorkspacesPreviewResult {
      * on the page.
      */
     hasPreviewed: boolean
+    /** Whether or not the batch spec should be executed with the cache disabled. */
+    noCache: boolean
 }
 
 interface UseWorkspacesPreviewOptions {
@@ -159,10 +161,10 @@ export const useWorkspacesPreview = (
             > =>
                 isBatchSpecApplied
                     ? createBatchSpecFromRaw({
-                          variables: { spec: code, namespace: namespaceID, noCache, batchChange },
+                          variables: { spec: code, namespace: namespaceID, batchChange },
                       }).then(result => result.data?.createBatchSpecFromRaw)
                     : replaceBatchSpecInput({
-                          variables: { spec: code, previousSpec: currentBatchSpecID, noCache },
+                          variables: { spec: code, previousSpec: currentBatchSpecID },
                       }).then(result => result.data?.replaceBatchSpecInput)
 
             return preview()
@@ -192,7 +194,6 @@ export const useWorkspacesPreview = (
             currentBatchSpecID,
             namespaceID,
             isBatchSpecApplied,
-            noCache,
             createBatchSpecFromRaw,
             replaceBatchSpecInput,
             batchChange,
@@ -276,5 +277,6 @@ export const useWorkspacesPreview = (
         error,
         clearError: () => setError(undefined),
         hasPreviewed: hasRequestedPreview && hasPreviewed,
+        noCache,
     }
 }

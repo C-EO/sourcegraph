@@ -1,12 +1,13 @@
 import assert from 'assert'
 
+import { beforeEach, describe, it } from 'mocha'
 import { Key } from 'ts-key-enum'
 
 import { hasFocus } from '@sourcegraph/shared/src/testing/dom-test-helpers'
-import { createDriverForTest, Driver } from '@sourcegraph/shared/src/testing/driver'
+import { createDriverForTest, type Driver } from '@sourcegraph/shared/src/testing/driver'
 import { afterEachSaveScreenshotIfFailed } from '@sourcegraph/shared/src/testing/screenshotReporter'
 
-import { createWebIntegrationTestContext, WebIntegrationTestContext } from '../../context'
+import { createWebIntegrationTestContext, type WebIntegrationTestContext } from '../../context'
 import {
     GET_INSIGHT_VIEW_SEARCH_BASED_INSIGHT,
     LANG_STAT_INSIGHT_CONTENT,
@@ -65,15 +66,23 @@ describe('Code insights [Insight Card] should has a proper focus management ', (
         )
 
         const dataSeries = GET_INSIGHT_VIEW_SEARCH_BASED_INSIGHT.insightViews.nodes[0]?.dataSeries
+
         if (!dataSeries) {
             assert.fail('Insight errored')
         }
 
-        for (let lineIndex = 0; lineIndex < dataSeries.length; lineIndex++) {
+        await driver.page.waitForSelector('[aria-label="Chart series"]')
+
+        // Focus the chart container (SVG root element)
+        await driver.page.keyboard.press(Key.Tab)
+
+        // Enter the arrow keys keyboard navigation mode
+        await driver.page.keyboard.press(Key.Enter)
+
+        for (let lineIndex = 0; lineIndex <= dataSeries.length - 1; lineIndex++) {
             const series = dataSeries[lineIndex]
 
             for (let pointIndex = 0; pointIndex < series.points.length; pointIndex++) {
-                await driver.page.keyboard.press(Key.Tab)
                 assert.strictEqual(
                     await hasFocus(
                         driver,
@@ -84,6 +93,8 @@ describe('Code insights [Insight Card] should has a proper focus management ', (
                     true,
                     'Insight data point should be focused'
                 )
+
+                await driver.page.keyboard.press(Key.ArrowRight)
             }
         }
     })

@@ -8,37 +8,46 @@ import (
 
 	"github.com/sourcegraph/log"
 
-	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
-	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
-	"github.com/sourcegraph/sourcegraph/cmd/frontend/globals"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/internal/auth/userpasswd"
+	"github.com/sourcegraph/sourcegraph/cmd/frontend/internal/backend"
 	"github.com/sourcegraph/sourcegraph/internal/auth"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/dotcom"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type randomizeUserPasswordResult struct {
-	resetURL *url.URL
+	resetURL  *url.URL
+	emailSent bool
 }
 
 func (r *randomizeUserPasswordResult) ResetPasswordURL() *string {
 	if r.resetURL == nil {
 		return nil
 	}
-	urlStr := globals.ExternalURL().ResolveReference(r.resetURL).String()
+	urlStr := conf.ExternalURLParsed().ResolveReference(r.resetURL).String()
 	return &urlStr
 }
 
-func sendEmail(ctx context.Context, db database.DB, userID int32, resetURL *url.URL) error {
+func (r *randomizeUserPasswordResult) EmailSent() bool { return r.emailSent }
+
+func sendPasswordResetURLToPrimaryEmail(ctx context.Context, db database.DB, userID int32, resetURL *url.URL) error {
 	user, err := db.Users().GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	email, _, err := db.UserEmails().GetPrimaryEmail(ctx, userID)
+	email, verified, err := db.UserEmails().GetPrimaryEmail(ctx, userID)
 	if err != nil {
 		return err
+	}
+
+	if !verified {
+		resetURL, err = userpasswd.AttachEmailVerificationToPasswordReset(ctx, db.UserEmails(), *resetURL, userID, email)
+		if err != nil {
+			return errors.Wrap(err, "attach email verification")
+		}
 	}
 
 	if err = userpasswd.SendResetPasswordURLEmail(ctx, email, user.Username, resetURL); err != nil {
@@ -50,13 +59,14 @@ func sendEmail(ctx context.Context, db database.DB, userID int32, resetURL *url.
 
 func (r *schemaResolver) RandomizeUserPassword(ctx context.Context, args *struct {
 	User graphql.ID
-}) (*randomizeUserPasswordResult, error) {
+},
+) (*randomizeUserPasswordResult, error) {
 	if !userpasswd.ResetPasswordEnabled() {
 		return nil, errors.New("resetting passwords is not enabled")
 	}
 
 	// 🚨 SECURITY: On dotcom, we MUST send password reset links via email.
-	if envvar.SourcegraphDotComMode() && !conf.CanSendEmail() {
+	if dotcom.SourcegraphDotComMode() && !conf.CanSendEmail() {
 		return nil, errors.New("unable to reset password because email sending is not configured")
 	}
 
@@ -70,7 +80,7 @@ func (r *schemaResolver) RandomizeUserPassword(ctx context.Context, args *struct
 		return nil, errors.Wrap(err, "cannot parse user ID")
 	}
 
-	logger := r.logger.Scoped("randomizeUserPassword", "endpoint for resetting user passwords").
+	logger := r.logger.Scoped("randomizeUserPassword").
 		With(log.Int32("userID", userID))
 
 	logger.Info("resetting user password")
@@ -81,23 +91,27 @@ func (r *schemaResolver) RandomizeUserPassword(ctx context.Context, args *struct
 	// This method modifies the DB, which is somewhat counterintuitive for a "value" type from an
 	// implementation POV. Its behavior is justified because it is convenient and intuitive from the
 	// POV of the API consumer.
-	resetURL, err := backend.MakePasswordResetURL(ctx, r.db, userID)
+	resetURL, err := backend.MakePasswordResetURL(ctx, r.db, userID, "")
 	if err != nil {
 		return nil, err
 	}
 
 	// If email is enabled, we also send this reset URL to the user via email.
+	var emailSent bool
 	var emailSendErr error
 	if conf.CanSendEmail() {
 		logger.Debug("sending password reset URL in email")
-		if emailSendErr = sendEmail(ctx, r.db, userID, resetURL); emailSendErr != nil {
+		if emailSendErr = sendPasswordResetURLToPrimaryEmail(ctx, r.db, userID, resetURL); emailSendErr != nil {
 			// This is not a hard error - if the email send fails, we still want to
 			// provide the reset URL to the caller, so we just log it here.
 			logger.Error("failed to send password reset URL", log.Error(emailSendErr))
+		} else {
+			// Email was sent to an email address associated with the user.
+			emailSent = true
 		}
 	}
 
-	if envvar.SourcegraphDotComMode() {
+	if dotcom.SourcegraphDotComMode() {
 		// 🚨 SECURITY: Do not return reset URL on dotcom - we must have send it via an email.
 		// We already validate that email is enabled earlier in this endpoint for dotcom.
 		resetURL = nil
@@ -108,5 +122,8 @@ func (r *schemaResolver) RandomizeUserPassword(ctx context.Context, args *struct
 		}
 	}
 
-	return &randomizeUserPasswordResult{resetURL: resetURL}, nil
+	return &randomizeUserPasswordResult{
+		resetURL:  resetURL,
+		emailSent: emailSent,
+	}, nil
 }

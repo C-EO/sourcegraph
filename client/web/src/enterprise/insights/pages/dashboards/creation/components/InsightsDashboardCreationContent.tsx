@@ -1,20 +1,22 @@
-import React, { ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
 
 import classNames from 'classnames'
 
-import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { Input } from '@sourcegraph/wildcard'
-
 import {
+    Input,
+    ErrorAlert,
     FormGroup,
-    FormRadioInput,
-    getDefaultInputProps,
+    useForm,
     useField,
+    getDefaultInputProps,
     createRequiredValidator,
-    LimitedAccessLabel,
-} from '../../../../components'
-import { FORM_ERROR, FormAPI, SubmissionErrors, useForm } from '../../../../components/form/hooks/useForm'
-import { InsightsDashboardOwner, isGlobalOwner, isOrganizationOwner, isPersonalOwner } from '../../../../core'
+    FORM_ERROR,
+    type FormAPI,
+    type SubmissionErrors,
+} from '@sourcegraph/wildcard'
+
+import { FormRadioInput, LimitedAccessLabel } from '../../../../components'
+import { type InsightsDashboardOwner, isGlobalOwner, isOrganizationOwner, isPersonalOwner } from '../../../../core'
 import { useUiFeatures } from '../../../../hooks'
 
 import styles from './InsightsDashboardCreationContent.module.scss'
@@ -41,7 +43,9 @@ export interface InsightsDashboardCreationContentProps {
 /**
  * Renders creation UI form content (fields, submit and cancel buttons).
  */
-export const InsightsDashboardCreationContent: React.FunctionComponent<InsightsDashboardCreationContentProps> = props => {
+export const InsightsDashboardCreationContent: React.FunctionComponent<
+    InsightsDashboardCreationContentProps
+> = props => {
     const { initialValues, owners, onSubmit, children } = props
 
     const { licensed } = useUiFeatures()

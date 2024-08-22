@@ -1,30 +1,30 @@
 import React, { useCallback } from 'react'
 
 import classNames from 'classnames'
-import { Observable } from 'rxjs'
+import type { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 
-import { isErrorLike } from '@sourcegraph/common'
-import { HighlightLineRange, HighlightResponseFormat } from '@sourcegraph/search'
 import {
-    LastSyncedIcon,
     SymbolSearchResultStyles as styles,
-    SearchResultStyles as searchResultStyles,
-    CodeExcerpt,
     navigateToFileOnMiddleMouseButtonClick,
-    ResultContainer,
+    OldResultContainer,
     CopyPathAction,
-} from '@sourcegraph/search-ui'
-import { FetchFileParameters } from '@sourcegraph/shared/src/backend/file'
-import { getFileMatchUrl, getRepositoryUrl, getRevision, SymbolMatch } from '@sourcegraph/shared/src/search/stream'
-import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
-import { SymbolTag } from '@sourcegraph/shared/src/symbols/SymbolTag'
-import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
+} from '@sourcegraph/branded'
+import type { FetchFileParameters } from '@sourcegraph/shared/src/backend/file'
+import { getFileMatchUrl, getRepositoryUrl, getRevision, type SymbolMatch } from '@sourcegraph/shared/src/search/stream'
+import { isSettingsValid, type SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
+import { SymbolKind } from '@sourcegraph/shared/src/symbols/SymbolKind'
+import { noOpTelemetryRecorder } from '@sourcegraph/shared/src/telemetry'
+import type { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { codeCopiedEvent } from '@sourcegraph/shared/src/tracking/event-log-creators'
 
+import { type HighlightLineRange, HighlightResponseFormat } from '../../../graphql-operations'
+import { CodeExcerpt } from '../components/CodeExcerpt'
 import { useOpenSearchResultsContext } from '../MatchHandlersContext'
 
 import { RepoFileLink } from './RepoFileLink'
+
+import searchResultStyles from './SearchResultsStyles.module.scss'
 
 export interface SymbolSearchResultProps extends TelemetryProps, SettingsCascadeProps {
     result: SymbolMatch
@@ -47,8 +47,7 @@ export const SymbolSearchResult: React.FunctionComponent<SymbolSearchResultProps
     fetchHighlightedFileLineRanges,
 }) => {
     const enableLazyFileResultSyntaxHighlighting =
-        settingsCascade.final &&
-        !isErrorLike(settingsCascade.final) &&
+        isSettingsValid(settingsCascade) &&
         settingsCascade.final.experimentalFeatures?.enableLazyFileResultSyntaxHighlighting
 
     const repoAtRevisionURL = getRepositoryUrl(result.repository, result.branches)
@@ -68,11 +67,12 @@ export const SymbolSearchResult: React.FunctionComponent<SymbolSearchResultProps
                         ? `${repoDisplayName}${revisionDisplayName ? `@${revisionDisplayName}` : ''}`
                         : undefined
                 }
-                className={classNames(searchResultStyles.titleInner, searchResultStyles.mutedRepoFileLink)}
+                className={classNames(searchResultStyles.titleInner)}
             />
             <CopyPathAction
                 filePath={result.path}
                 className={searchResultStyles.copyButton}
+                telemetryRecorder={noOpTelemetryRecorder}
                 telemetryService={telemetryService}
             />
         </span>
@@ -127,7 +127,7 @@ export const SymbolSearchResult: React.FunctionComponent<SymbolSearchResultProps
     )
 
     return (
-        <ResultContainer
+        <OldResultContainer
             index={index}
             title={title}
             resultType={result.type}
@@ -135,10 +135,9 @@ export const SymbolSearchResult: React.FunctionComponent<SymbolSearchResultProps
             repoName={result.repository}
             repoStars={result.repoStars}
             className={classNames(searchResultStyles.copyButtonContainer, containerClassName)}
-            resultClassName={styles.symbolsOverride}
+            repoLastFetched={result.repoLastFetched}
         >
             <div className={styles.symbols}>
-                {result.repoLastFetched && <LastSyncedIcon lastSyncedTime={result.repoLastFetched} />}
                 {result.symbols.map(symbol => (
                     <div
                         key={`symbol:${symbol.name}${String(symbol.containerName)}${symbol.url}`}
@@ -152,7 +151,13 @@ export const SymbolSearchResult: React.FunctionComponent<SymbolSearchResultProps
                         onKeyDown={() => openSymbol(symbol.url)}
                     >
                         <div className="mr-2 flex-shrink-0">
-                            <SymbolTag kind={symbol.kind} />
+                            <SymbolKind
+                                kind={symbol.kind}
+                                symbolKindTags={
+                                    isSettingsValid(settingsCascade) &&
+                                    settingsCascade.final.experimentalFeatures?.symbolKindTags
+                                }
+                            />
                         </div>
                         <div className={styles.symbolCodeExcerpt}>
                             <CodeExcerpt
@@ -175,6 +180,6 @@ export const SymbolSearchResult: React.FunctionComponent<SymbolSearchResultProps
                     </div>
                 ))}
             </div>
-        </ResultContainer>
+        </OldResultContainer>
     )
 }

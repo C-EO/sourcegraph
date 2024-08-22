@@ -1,19 +1,21 @@
 import { subDays } from 'date-fns'
+import { afterEach, beforeEach, describe, it } from 'mocha'
 
 import {
     DiffHunkLineType,
     ExternalServiceKind,
-    SharedGraphQlOperations,
+    RepositoryType,
+    type SharedGraphQlOperations,
 } from '@sourcegraph/shared/src/graphql-operations'
 import { accessibilityAudit } from '@sourcegraph/shared/src/testing/accessibility'
-import { createDriverForTest, Driver } from '@sourcegraph/shared/src/testing/driver'
+import { createDriverForTest, type Driver } from '@sourcegraph/shared/src/testing/driver'
 import { afterEachSaveScreenshotIfFailed } from '@sourcegraph/shared/src/testing/screenshotReporter'
 
-import { WebGraphQlOperations } from '../graphql-operations'
+import type { WebGraphQlOperations } from '../graphql-operations'
 
-import { createWebIntegrationTestContext, WebIntegrationTestContext } from './context'
+import { createWebIntegrationTestContext, type WebIntegrationTestContext } from './context'
+import { createCodyContextFiltersResult } from './graphQlResponseHelpers'
 import { commonWebGraphQlResults } from './graphQlResults'
-import { percySnapshotWithVariants } from './utils'
 
 describe('RepositoryCommitPage', () => {
     const repositoryName = 'github.com/sourcegraph/sourcegraph'
@@ -21,15 +23,17 @@ describe('RepositoryCommitPage', () => {
     const commitDate = subDays(new Date(), 7).toISOString()
     const commonBlobGraphQlResults: Partial<WebGraphQlOperations & SharedGraphQlOperations> = {
         ...commonWebGraphQlResults,
+        ContextFilters: () => createCodyContextFiltersResult(),
         RepositoryCommit: () => ({
             node: {
                 __typename: 'Repository',
+                sourceType: RepositoryType.GIT_REPOSITORY,
                 commit: {
                     __typename: 'GitCommit',
-                    id:
-                        'R2l0Q29tbWl0OnsiciI6IlVtVndiM05wZEc5eWVUb3pOamd3T1RJMU1BPT0iLCJjIjoiMWU3YmQwMDBlNzhjZjM1YzZlMWJlMWI5ZjE1MTBiNGFhZGZhYTQxNiJ9',
+                    id: 'R2l0Q29tbWl0OnsiciI6IlVtVndiM05wZEc5eWVUb3pOamd3T1RJMU1BPT0iLCJjIjoiMWU3YmQwMDBlNzhjZjM1YzZlMWJlMWI5ZjE1MTBiNGFhZGZhYTQxNiJ9',
                     oid: '1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416',
                     abbreviatedOID: '1e7bd00',
+                    perforceChangelist: null,
                     message: 'Signup copy adjustment (#43435)\n\nCopy adjustment',
                     subject: 'Signup copy adjustment (#43435)',
                     body: 'Copy adjustment',
@@ -68,8 +72,8 @@ describe('RepositoryCommitPage', () => {
                             __typename: 'GitCommit',
                             oid: '56ab377d94fe96c87bc8c5e26675c585f9312e64',
                             abbreviatedOID: '56ab377',
-                            url:
-                                '/github.com/sourcegraph/sourcegraph/-/commit/56ab377d94fe96c87bc8c5e26675c585f9312e64',
+                            perforceChangelist: null,
+                            url: '/github.com/sourcegraph/sourcegraph/-/commit/56ab377d94fe96c87bc8c5e26675c585f9312e64',
                         },
                     ],
                     url: '/github.com/sourcegraph/sourcegraph/-/commit/1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416',
@@ -78,8 +82,7 @@ describe('RepositoryCommitPage', () => {
                     externalURLs: [
                         {
                             __typename: 'ExternalLink',
-                            url:
-                                'https://github.com/sourcegraph/sourcegraph/commit/1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416',
+                            url: 'https://github.com/sourcegraph/sourcegraph/commit/1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416',
                             serviceKind: ExternalServiceKind.GITHUB,
                         },
                     ],
@@ -111,8 +114,8 @@ describe('RepositoryCommitPage', () => {
                                 newPath: 'client/web/src/auth/CloudSignUpPage.tsx',
                                 mostRelevantFile: {
                                     __typename: 'GitBlob',
-                                    url:
-                                        '/github.com/sourcegraph/sourcegraph@1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416/-/blob/client/web/src/auth/CloudSignUpPage.tsx',
+                                    url: '/github.com/sourcegraph/sourcegraph@1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416/-/blob/client/web/src/auth/CloudSignUpPage.tsx',
+                                    changelistURL: '',
                                 },
                                 hunks: [
                                     {
@@ -132,43 +135,35 @@ describe('RepositoryCommitPage', () => {
                                             lines: [
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                    \u003Cspan class="hl-punctuation hl-section hl-embedded hl-begin hl-tsx"\u003E{\u003C/span\u003E\u003Cspan class="hl-meta hl-embedded hl-expression hl-tsx"\u003E\u003Cspan class="hl-variable hl-other hl-readwrite hl-tsx"\u003EinvitedBy\u003C/span\u003E \u003Cspan class="hl-keyword hl-operator hl-ternary hl-tsx"\u003E?\u003C/span\u003E \u003Cspan class="hl-string hl-quoted hl-single hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-string hl-begin hl-tsx"\u003E\u0026#39;\u003C/span\u003EWith a Sourcegraph account, you can:\u003Cspan class="hl-punctuation hl-definition hl-string hl-end hl-tsx"\u003E\u0026#39;\u003C/span\u003E\u003C/span\u003E \u003Cspan class="hl-keyword hl-operator hl-ternary hl-tsx"\u003E:\u003C/span\u003E \u003Cspan class="hl-string hl-quoted hl-single hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-string hl-begin hl-tsx"\u003E\u0026#39;\u003C/span\u003EWith a Sourcegraph account, you can also:\u003Cspan class="hl-punctuation hl-definition hl-string hl-end hl-tsx"\u003E\u0026#39;\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-punctuation hl-section hl-embedded hl-end hl-tsx"\u003E}\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                    \u003Cspan class="hl-punctuation hl-section hl-embedded hl-begin hl-tsx"\u003E{\u003C/span\u003E\u003Cspan class="hl-meta hl-embedded hl-expression hl-tsx"\u003E\u003Cspan class="hl-variable hl-other hl-readwrite hl-tsx"\u003EinvitedBy\u003C/span\u003E \u003Cspan class="hl-keyword hl-operator hl-ternary hl-tsx"\u003E?\u003C/span\u003E \u003Cspan class="hl-string hl-quoted hl-single hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-string hl-begin hl-tsx"\u003E\u0026#39;\u003C/span\u003EWith a Sourcegraph account, you can:\u003Cspan class="hl-punctuation hl-definition hl-string hl-end hl-tsx"\u003E\u0026#39;\u003C/span\u003E\u003C/span\u003E \u003Cspan class="hl-keyword hl-operator hl-ternary hl-tsx"\u003E:\u003C/span\u003E \u003Cspan class="hl-string hl-quoted hl-single hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-string hl-begin hl-tsx"\u003E\u0026#39;\u003C/span\u003EWith a Sourcegraph account, you can also:\u003Cspan class="hl-punctuation hl-definition hl-string hl-end hl-tsx"\u003E\u0026#39;\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-punctuation hl-section hl-embedded hl-end hl-tsx"\u003E}\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                    \u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eul\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-attributes hl-tsx"\u003E \u003Cspan class="hl-entity hl-other hl-attribute-name hl-tsx"\u003EclassName\u003C/span\u003E\u003Cspan class="hl-keyword hl-operator hl-assignment hl-tsx"\u003E=\u003C/span\u003E\u003Cspan class="hl-punctuation hl-section hl-embedded hl-begin hl-tsx"\u003E{\u003C/span\u003E\u003Cspan class="hl-meta hl-embedded hl-expression hl-tsx"\u003E\u003Cspan class="hl-variable hl-other hl-object hl-tsx"\u003Estyles\u003C/span\u003E\u003Cspan class="hl-punctuation hl-accessor hl-tsx"\u003E.\u003C/span\u003E\u003Cspan class="hl-variable hl-other hl-property hl-tsx"\u003EfeatureList\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-punctuation hl-section hl-embedded hl-end hl-tsx"\u003E}\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                    \u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eul\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-attributes hl-tsx"\u003E \u003Cspan class="hl-entity hl-other hl-attribute-name hl-tsx"\u003EclassName\u003C/span\u003E\u003Cspan class="hl-keyword hl-operator hl-assignment hl-tsx"\u003E=\u003C/span\u003E\u003Cspan class="hl-punctuation hl-section hl-embedded hl-begin hl-tsx"\u003E{\u003C/span\u003E\u003Cspan class="hl-meta hl-embedded hl-expression hl-tsx"\u003E\u003Cspan class="hl-variable hl-other hl-object hl-tsx"\u003Estyles\u003C/span\u003E\u003Cspan class="hl-punctuation hl-accessor hl-tsx"\u003E.\u003C/span\u003E\u003Cspan class="hl-variable hl-other hl-property hl-tsx"\u003EfeatureList\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-punctuation hl-section hl-embedded hl-end hl-tsx"\u003E}\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.DELETED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003ESearch across all your public repositories\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003ESearch across all your public repositories\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.ADDED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003ESearch across 2M+ open source repositories\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003ESearch across 2M+ open source repositories\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003EMonitor code for changes\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003EMonitor code for changes\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003ENavigate through code with IDE like go to references and definition hovers\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003ENavigate through code with IDE like go to references and definition hovers\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003EIntegrate data, tooling, and code in a single location \u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-source hl-tsx"\u003E\u003Cspan class="hl-meta hl-var hl-expr hl-tsx"\u003E\u003Cspan class="hl-meta hl-arrow hl-tsx"\u003E\u003Cspan class="hl-meta hl-block hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E\u003Cspan class="hl-meta hl-tag hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003E                        \u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\u003Cspan class="hl-meta hl-tag hl-without-attributes hl-tsx"\u003E\u003Cspan class="hl-meta hl-jsx hl-children hl-tsx"\u003EIntegrate data, tooling, and code in a single location \u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-begin hl-tsx"\u003E\u0026lt;/\u003C/span\u003E\u003Cspan class="hl-entity hl-name hl-tag hl-tsx"\u003Eli\u003C/span\u003E\u003Cspan class="hl-punctuation hl-definition hl-tag hl-end hl-tsx"\u003E\u0026gt;\u003C/span\u003E\u003C/span\u003E\n\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                             ],
                                         },
@@ -195,8 +190,8 @@ describe('RepositoryCommitPage', () => {
                                 newPath: 'client/web/src/auth/__snapshots__/SignUpPage.test.tsx.snap',
                                 mostRelevantFile: {
                                     __typename: 'GitBlob',
-                                    url:
-                                        '/github.com/sourcegraph/sourcegraph@1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416/-/blob/client/web/src/auth/__snapshots__/SignUpPage.test.tsx.snap',
+                                    url: '/github.com/sourcegraph/sourcegraph@1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416/-/blob/client/web/src/auth/__snapshots__/SignUpPage.test.tsx.snap',
+                                    changelistURL: '',
                                 },
                                 hunks: [
                                     {
@@ -215,43 +210,35 @@ describe('RepositoryCommitPage', () => {
                                             lines: [
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          class=\u0026#34;featureList\u0026#34;\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          class=\u0026#34;featureList\u0026#34;\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E        \u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E        \u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          \u0026lt;li\u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          \u0026lt;li\u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.DELETED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E            Search across all your public repositories\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E            Search across all your public repositories\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.ADDED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E            Search across 2M+ open source repositories\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E            Search across 2M+ open source repositories\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          \u0026lt;/li\u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          \u0026lt;/li\u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          \u0026lt;li\u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E          \u0026lt;li\u0026gt;\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                                 {
                                                     kind: DiffHunkLineType.UNCHANGED,
-                                                    html:
-                                                        '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E            Monitor code for changes\n\u003C/span\u003E\u003C/div\u003E',
+                                                    html: '\u003Cdiv\u003E\u003Cspan class="hl-text hl-plain"\u003E            Monitor code for changes\n\u003C/span\u003E\u003C/div\u003E',
                                                 },
                                             ],
                                         },
@@ -284,6 +271,7 @@ describe('RepositoryCommitPage', () => {
                 id: 'UmVwb3NpdG9yeTozNjgwOTI1MA==',
                 name: 'github.com/sourcegraph/sourcegraph',
                 url: '/github.com/sourcegraph/sourcegraph',
+                sourceType: RepositoryType.GIT_REPOSITORY,
                 externalURLs: [
                     {
                         url: 'https://github.com/sourcegraph/sourcegraph',
@@ -306,11 +294,16 @@ describe('RepositoryCommitPage', () => {
                     cloned: true,
                 },
                 commit: {
+                    __typename: 'GitCommit',
                     oid: '1e7bd000e78cf35c6e1be1b9f1510b4aadfaa416',
                     tree: {
                         url: '/github.com/sourcegraph/sourcegraph',
                     },
                 },
+                changelist: null,
+                isFork: false,
+                metadata: [],
+                topics: [],
             },
         }),
     }
@@ -335,8 +328,6 @@ describe('RepositoryCommitPage', () => {
     it('Display diff in unified mode', async () => {
         await driver.page.goto(`${driver.sourcegraphBaseUrl}/${repositoryName}/-/commit/${commitID}`)
         await driver.page.waitForSelector('.test-file-diff-node', { visible: true })
-
-        await percySnapshotWithVariants(driver.page, 'Commit page - Unified mode')
         await accessibilityAudit(driver.page)
     })
 
@@ -348,8 +339,6 @@ describe('RepositoryCommitPage', () => {
         await driver.page.evaluate(element => element.click(), splitRadioButton)
 
         await driver.page.waitForSelector('[data-split-mode="split"]', { visible: true })
-
-        await percySnapshotWithVariants(driver.page, 'Commit page - Split mode')
         await accessibilityAudit(driver.page)
     })
 })

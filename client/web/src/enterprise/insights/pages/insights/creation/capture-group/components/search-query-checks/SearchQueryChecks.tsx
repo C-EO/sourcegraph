@@ -1,4 +1,4 @@
-import { FC, PropsWithChildren } from 'react'
+import type { FC, PropsWithChildren } from 'react'
 
 import { mdiClose, mdiRadioboxBlank } from '@mdi/js'
 import { VisuallyHidden } from '@reach/visually-hidden'
@@ -15,18 +15,12 @@ interface SearchQueryChecksProps {
         isValidPatternType: true | false | undefined
         isNotRepo: true | false | undefined
         isNotCommitOrDiff: true | false | undefined
-        isNoNewLines: true | false | undefined
+        isNotRev: true | false | undefined
     }
 }
 
 export const SearchQueryChecks: FC<SearchQueryChecksProps> = ({ checks }) => (
     <ul aria-label="Search query validation checks list" className={classNames(styles.checks)}>
-        <CheckListItem
-            errorMessage="shouldn't contains a match over more than a single line"
-            valid={checks?.isNoNewLines}
-        >
-            Does not contain a match over more than a single line.
-        </CheckListItem>
         <CheckListItem
             errorMessage="shouldn't contain boolean operators, AND, OR, NOT (regular
                 expression boolean operators can still be used)"
@@ -36,13 +30,17 @@ export const SearchQueryChecks: FC<SearchQueryChecksProps> = ({ checks }) => (
             expression boolean operators can still be used)
         </CheckListItem>
         <CheckListItem
-            errorMessage="shouldn't contain patternType:literal or patternType:structural"
+            errorMessage="shouldn't contain 'keyword', 'literal', or 'structural' patterntype"
             valid={checks?.isValidPatternType}
         >
-            Does not contain <Code>patternType:literal</Code> or <Code>patternType:structural</Code>
+            Does not contain a <Code>patternType:keyword</Code>, <Code>standard</Code>, <Code>literal</Code>, or{' '}
+            <Code>structural</Code>{' '}
         </CheckListItem>
         <CheckListItem errorMessage="shouldn't contain repo filter" valid={checks?.isNotRepo}>
             Does not contain <Code>repo:</Code> filter
+        </CheckListItem>
+        <CheckListItem errorMessage="shouldn't contain rev filter" valid={checks?.isNotRev}>
+            Does not contain <Code>rev:</Code> filter
         </CheckListItem>
         <CheckListItem errorMessage="shouldn't contain commit or diff search" valid={checks?.isNotCommitOrDiff}>
             Does not contain <Code>commit</Code> or <Code>diff</Code> search

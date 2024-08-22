@@ -18,10 +18,11 @@ export interface PageSwitcherProps {
     totalCount: null | number
     hasNextPage: null | boolean
     hasPreviousPage: null | boolean
-    goToNextPage: () => void
-    goToPreviousPage: () => void
-    goToFirstPage: () => void
-    goToLastPage: () => void
+    goToNextPage: () => Promise<void>
+    goToPreviousPage: () => Promise<void>
+    goToFirstPage: () => Promise<void>
+    goToLastPage: () => Promise<void>
+    onClick?: () => void
     className?: string
 }
 
@@ -43,10 +44,31 @@ export const PageSwitcher: React.FunctionComponent<React.PropsWithChildren<PageS
         goToLastPage,
         hasPreviousPage,
         hasNextPage,
+        onClick,
     } = props
 
+    const [isLoadingPage, setIsLoadingPage] = React.useState(false)
+    function withLoadingPage<T>(func: () => Promise<T>): () => Promise<void> {
+        return async () => {
+            try {
+                onClick?.()
+                setIsLoadingPage(true)
+                await func()
+            } finally {
+                setIsLoadingPage(false)
+            }
+        }
+    }
+
+    const isPreviousPageDisabled = isLoadingPage || (hasPreviousPage !== null ? !hasPreviousPage : true)
+    const isNextPageDisabled = isLoadingPage || (hasNextPage !== null ? !hasNextPage : true)
+
+    if (isPreviousPageDisabled && isNextPageDisabled && !isLoadingPage) {
+        return null
+    }
+
     return (
-        <nav className={className}>
+        <nav className={className} aria-label="pagination">
             <ul className={styles.list}>
                 <li>
                     <Tooltip content="First page">
@@ -55,8 +77,8 @@ export const PageSwitcher: React.FunctionComponent<React.PropsWithChildren<PageS
                             className={classNames(styles.button, 'mx-3')}
                             variant="secondary"
                             outline={true}
-                            disabled={hasPreviousPage !== null ? !hasPreviousPage : true}
-                            onClick={goToFirstPage}
+                            disabled={isPreviousPageDisabled}
+                            onClick={withLoadingPage(goToFirstPage)}
                         >
                             <Icon aria-hidden={true} as={PageFirstIcon} className={styles.firstPageButton} />
                         </Button>
@@ -68,8 +90,8 @@ export const PageSwitcher: React.FunctionComponent<React.PropsWithChildren<PageS
                         aria-label="Go to previous page"
                         variant="secondary"
                         outline={true}
-                        disabled={hasPreviousPage !== null ? !hasPreviousPage : true}
-                        onClick={goToPreviousPage}
+                        disabled={isPreviousPageDisabled}
+                        onClick={withLoadingPage(goToPreviousPage)}
                     >
                         <Icon
                             aria-hidden={true}
@@ -85,8 +107,8 @@ export const PageSwitcher: React.FunctionComponent<React.PropsWithChildren<PageS
                         aria-label="Go to next page"
                         variant="secondary"
                         outline={true}
-                        disabled={hasNextPage !== null ? !hasNextPage : true}
-                        onClick={goToNextPage}
+                        disabled={isNextPageDisabled}
+                        onClick={withLoadingPage(goToNextPage)}
                     >
                         <span className={styles.nextButtonLabel}>Next</span>
                         <Icon
@@ -103,8 +125,8 @@ export const PageSwitcher: React.FunctionComponent<React.PropsWithChildren<PageS
                             className={classNames(styles.button, 'mx-3')}
                             variant="secondary"
                             outline={true}
-                            disabled={hasNextPage !== null ? !hasNextPage : true}
-                            onClick={goToLastPage}
+                            disabled={isNextPageDisabled}
+                            onClick={withLoadingPage(goToLastPage)}
                         >
                             <Icon aria-hidden={true} as={PageLastIcon} className={styles.lastPageButton} />
                         </Button>
@@ -113,7 +135,7 @@ export const PageSwitcher: React.FunctionComponent<React.PropsWithChildren<PageS
             </ul>
             {totalCount !== null && totalLabel !== undefined ? (
                 <div className={styles.label}>
-                    <Text className="text-muted" size="small">
+                    <Text className="text-muted mb-0" size="small">
                         Total{' '}
                         <Text weight="bold" as="strong">
                             {totalLabel}

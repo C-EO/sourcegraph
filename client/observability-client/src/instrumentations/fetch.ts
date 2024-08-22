@@ -1,4 +1,4 @@
-import { context, Context, Tracer, ROOT_CONTEXT } from '@opentelemetry/api'
+import { context, type Context, type Tracer, ROOT_CONTEXT } from '@opentelemetry/api'
 
 import { sharedSpanStore } from '../sdk'
 
@@ -22,8 +22,7 @@ function getFetchTracerContext(parentContext: Context = context.active()): Conte
 /**
  * Used to patch `SourcegraphWebTracerProvider` to tweak the behavior of the `@opentelemetry/instrumentation-fetch`.
  */
-export const getFetchInstrumentationStartSpan = (originalStartSpan: Tracer['startSpan']): Tracer['startSpan'] => (
-    name,
-    options,
-    context
-) => originalStartSpan(name, options, getFetchTracerContext(context))
+export const getFetchInstrumentationStartSpan =
+    (originalStartSpan: Tracer['startSpan']): Tracer['startSpan'] =>
+    (name, options, context) =>
+        originalStartSpan(name, options, getFetchTracerContext(context))

@@ -1,14 +1,13 @@
-import { Series } from '@sourcegraph/wildcard'
+import type { Series } from '@sourcegraph/wildcard'
 
-import {
-    InsightDashboard,
+import type {
     CaptureGroupInsight,
     LangStatsInsight,
     InsightsDashboardOwner,
     SearchBasedInsight,
     ComputeInsight,
 } from '../types'
-import { InsightContentType } from '../types/insight/common'
+import type { InsightContentType, IncompleteDatapointAlert } from '../types/insight/common'
 
 export interface CategoricalChartContent<Datum> {
     data: Datum[]
@@ -20,7 +19,7 @@ export interface CategoricalChartContent<Datum> {
 }
 
 export interface BackendInsightSeries<Datum> extends Series<Datum> {
-    errored: boolean
+    alerts: IncompleteDatapointAlert[]
 }
 
 export interface SeriesChartContent<Datum> {
@@ -34,7 +33,7 @@ export interface InsightCategoricalContent<Datum> {
 
 export interface InsightSeriesContent<Datum> {
     type: InsightContentType.Series
-    content: SeriesChartContent<Datum>
+    series: BackendInsightSeries<Datum>[]
 }
 
 export type InsightContent<Datum> = InsightSeriesContent<Datum> | InsightCategoricalContent<Datum>
@@ -80,7 +79,7 @@ export type CreationInsightInput =
 
 export interface InsightCreateInput {
     insight: CreationInsightInput
-    dashboard: InsightDashboard | null
+    dashboardId: string | null
 }
 
 export interface InsightUpdateInput {
@@ -102,5 +101,5 @@ export interface BackendInsightDatum {
 export interface BackendInsightData {
     data: InsightContent<any>
     isFetchingHistoricalData: boolean
-    isAllSeriesErrored: boolean
+    incompleteAlert: IncompleteDatapointAlert | null
 }

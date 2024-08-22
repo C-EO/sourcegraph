@@ -4,7 +4,7 @@ import './initZones'
 
 import type { ZoneContextManager } from '@opentelemetry/context-zone'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { InstrumentationOption, registerInstrumentations } from '@opentelemetry/instrumentation'
+import { type InstrumentationOption, registerInstrumentations } from '@opentelemetry/instrumentation'
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch'
 import { Resource } from '@opentelemetry/resources'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
@@ -72,7 +72,11 @@ export function initOpenTelemetry(): void {
         registerInstrumentations({
             // Type-casting is required since the `FetchInstrumentation` is wrongly typed internally as `node.js` instrumentation.
             instrumentations: [
-                (new FetchInstrumentation() as unknown) as InstrumentationOption,
+                new FetchInstrumentation({
+                    // Ignore adding network events as span events to reduce the volume of events
+                    // sent to OpenTelemetry backends such as Honeycomb.
+                    ignoreNetworkEvents: true,
+                }) as unknown as InstrumentationOption,
                 new WindowLoadInstrumentation(),
                 new HistoryInstrumentation({
                     shouldCreatePageViewOnLocationChange: prevLocationInfo => {

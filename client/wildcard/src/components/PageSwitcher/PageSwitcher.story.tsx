@@ -1,15 +1,14 @@
 import { useState } from 'react'
 
-import { DecoratorFn, Meta, Story } from '@storybook/react'
+import type { Decorator, Meta, StoryFn } from '@storybook/react'
 
-import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
-import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
-import { Text } from '@sourcegraph/wildcard'
+import { BrandedStory } from '../../stories/BrandedStory'
+import { Text } from '../Typography/Text/Text'
 
 import { PageSwitcher } from './PageSwitcher'
 
-const decorator: DecoratorFn = story => (
-    <BrandedStory styles={webStyles}>{() => <div className="container mt-3">{story()}</div>}</BrandedStory>
+const decorator: Decorator = story => (
+    <BrandedStory>{() => <div className="container mt-3">{story()}</div>}</BrandedStory>
 )
 
 const config: Meta = {
@@ -22,8 +21,7 @@ const config: Meta = {
             {
                 type: 'figma',
                 name: 'Figma',
-                url:
-                    'https://www.figma.com/file/LZoW17Fy6eqOfnxjxIRB7d/%F0%9F%93%91-Pagination-Experiments?t=0QPBSel9sN03v8us-1',
+                url: 'https://www.figma.com/file/LZoW17Fy6eqOfnxjxIRB7d/%F0%9F%93%91-Pagination-Experiments?t=0QPBSel9sN03v8us-1',
             },
         ],
     },
@@ -31,15 +29,27 @@ const config: Meta = {
 
 export default config
 
-export const Simple: Story = (args = {}) => {
+export const Simple: StoryFn = (args = {}) => {
     const totalPages = args.totalCount
 
     const [page, setPage] = useState(1)
 
-    const goToNextPage = () => setPage(page => (page < totalPages ? page + 1 : page))
-    const goToPreviousPage = () => setPage(page => (page > 1 ? page - 1 : page))
-    const goToFirstPage = () => setPage(1)
-    const goToLastPage = () => setPage(totalPages)
+    const goToNextPage = async () => {
+        await sleep(2000)
+        setPage(page => (page < totalPages ? page + 1 : page))
+    }
+    const goToPreviousPage = async () => {
+        await sleep(2000)
+        setPage(page => (page > 1 ? page - 1 : page))
+    }
+    const goToFirstPage = async () => {
+        await sleep(2000)
+        setPage(1)
+    }
+    const goToLastPage = async () => {
+        await sleep(2000)
+        setPage(totalPages)
+    }
 
     const hasNextPage = page < totalPages
     const hasPreviousPage = page > 1
@@ -66,18 +76,17 @@ Simple.argTypes = {
     totalCount: {
         name: 'totalCount',
         control: { type: 'number' },
-        defaultValue: 5,
     },
     totalLabel: {
         name: 'totalLabel',
         control: { type: 'string' },
-        defaultValue: 'pages',
     },
 }
+Simple.args = {
+    totalCount: 5,
+    totalLabel: 'pages',
+}
 
-Simple.parameters = {
-    chromatic: {
-        enableDarkMode: true,
-        disableSnapshot: false,
-    },
+function sleep(timeout: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, timeout))
 }

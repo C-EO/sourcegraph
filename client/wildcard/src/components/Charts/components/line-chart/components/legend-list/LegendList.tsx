@@ -1,8 +1,8 @@
-import { createContext, FC, forwardRef, ReactNode, useContext } from 'react'
+import { createContext, type FC, forwardRef, type ReactNode, useContext } from 'react'
 
 import classNames from 'classnames'
 
-import { ForwardReferenceComponent } from '@sourcegraph/wildcard'
+import type { ForwardReferenceComponent } from '../../../../../../types'
 
 import styles from './LegendList.module.scss'
 
@@ -73,11 +73,13 @@ export const LegendItemPoint: FC<LegendItemPointProps> = props => {
     const active = propActive ?? contextActive
 
     return (
-        <span
-            aria-hidden={true}
-            /* eslint-disable-next-line react/forbid-dom-props */
-            style={{ backgroundColor: active ? color : 'var(--icon-muted)' }}
-            className={styles.legendMark}
-        />
+        <div className={styles.legendMarkContainer}>
+            <span
+                aria-hidden={true}
+                /* eslint-disable-next-line react/forbid-dom-props */
+                style={{ backgroundColor: active ? color : 'var(--icon-muted)' }}
+                className={styles.legendMark}
+            />
+        </div>
     )
 }

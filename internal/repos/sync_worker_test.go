@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/keegancsmith/sqlf"
+	"github.com/stretchr/testify/require"
 
 	"github.com/sourcegraph/log"
-	"github.com/sourcegraph/log/logtest"
 
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
+	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/repos"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 )
@@ -52,19 +53,26 @@ func TestSyncWorkerPlumbing(t *testing.T) {
 	h := &fakeRepoSyncHandler{
 		jobChan: jobChan,
 	}
-	worker, resetter := repos.NewSyncWorker(ctx, logtest.Scoped(t), store.Handle(), h, repos.SyncWorkerOptions{
+	worker, resetter, janitor := repos.NewSyncWorker(ctx, observation.TestContextTB(t), store.Handle(), h, repos.SyncWorkerOptions{
 		NumHandlers:    1,
 		WorkerInterval: 1 * time.Millisecond,
 	})
 	go worker.Start()
 	go resetter.Start()
+	go janitor.Start()
 
 	// There is a race between the worker being stopped and the worker util
 	// finalising the row which means that when running tests in verbose mode we'll
 	// see "sql: transaction has already been committed or rolled back". These
 	// errors can be ignored.
-	defer worker.Stop()
-	defer resetter.Stop()
+	t.Cleanup(func() {
+		err := janitor.Stop(ctx)
+		require.NoError(t, err)
+		err = resetter.Stop(ctx)
+		require.NoError(t, err)
+		err = worker.Stop(ctx)
+		require.NoError(t, err)
+	})
 
 	var job *repos.SyncJob
 	select {

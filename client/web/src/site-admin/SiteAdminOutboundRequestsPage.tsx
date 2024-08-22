@@ -1,20 +1,21 @@
-import React, { ReactNode, useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { mdiChevronDown } from '@mdi/js'
-import VisuallyHidden from '@reach/visually-hidden'
+import { VisuallyHidden } from '@reach/visually-hidden'
 import classNames from 'classnames'
 import copy from 'copy-to-clipboard'
-import { RouteComponentProps } from 'react-router'
 import { of } from 'rxjs'
 import { delay, map } from 'rxjs/operators'
 
-import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
+import { Timestamp } from '@sourcegraph/branded/src/components/Timestamp'
 import { useQuery } from '@sourcegraph/http-client/src'
-import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
+import { TelemetryV2Props } from '@sourcegraph/shared/src/telemetry'
+import type { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import {
     Button,
     Code,
     Container,
+    ErrorAlert,
     Icon,
     Link,
     LoadingSpinner,
@@ -29,29 +30,27 @@ import {
 
 import {
     FilteredConnection,
-    FilteredConnectionFilter,
-    FilteredConnectionQueryArguments,
+    type Filter,
+    type FilteredConnectionQueryArguments,
 } from '../components/FilteredConnection'
 import { PageTitle } from '../components/PageTitle'
-import { Timestamp } from '../components/time/Timestamp'
-import { OutboundRequestsResult, OutboundRequestsVariables } from '../graphql-operations'
+import type { OutboundRequestsResult, OutboundRequestsVariables } from '../graphql-operations'
 
-import { OUTBOUND_REQUESTS, OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL } from './backend'
+import { OUTBOUND_REQUESTS, OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL_MS } from './backend'
+import { parseProductReference } from './SiteAdminFeatureFlagsPage'
 
 import styles from './SiteAdminOutboundRequestsPage.module.scss'
 
-export interface SiteAdminOutboundRequestsPageProps extends RouteComponentProps, TelemetryProps {
-    now?: () => Date
-}
+export interface SiteAdminOutboundRequestsPageProps extends TelemetryProps, TelemetryV2Props {}
 
 export type OutboundRequest = OutboundRequestsResult['outboundRequests']['nodes'][0]
 
-const filters: FilteredConnectionFilter[] = [
+const filters: Filter[] = [
     {
         id: 'filters',
         label: 'Filter',
         type: 'select',
-        values: [
+        options: [
             {
                 label: 'All',
                 value: 'all',
@@ -76,21 +75,31 @@ const filters: FilteredConnectionFilter[] = [
 
 export const SiteAdminOutboundRequestsPage: React.FunctionComponent<
     React.PropsWithChildren<SiteAdminOutboundRequestsPageProps>
-> = ({ history, telemetryService }) => {
+> = ({ telemetryService, telemetryRecorder }) => {
     const [items, setItems] = useState<OutboundRequest[]>([])
 
     useEffect(() => {
         telemetryService.logPageView('SiteAdminOutboundRequests')
-    }, [telemetryService])
+        telemetryRecorder.recordEvent('admin.outboundRequests', 'view')
+    }, [telemetryService, telemetryRecorder])
 
-    const lastId = items[items.length - 1]?.id ?? null
+    const lastId = items.at(-1)?.id ?? null
     const { data, loading, error, stopPolling, refetch, startPolling } = useQuery<
         OutboundRequestsResult,
         OutboundRequestsVariables
     >(OUTBOUND_REQUESTS, {
         variables: { after: lastId },
-        pollInterval: OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL,
+        pollInterval: OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL_MS,
     })
+    const [polling, setPolling] = useState(true)
+    const togglePolling = useCallback(() => {
+        if (polling) {
+            stopPolling()
+        } else {
+            startPolling(OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL_MS)
+        }
+        setPolling(!polling)
+    }, [polling, startPolling, stopPolling])
 
     useEffect(() => {
         if (data?.outboundRequests?.nodes?.length && (!lastId || data?.outboundRequests.nodes[0].id > lastId)) {
@@ -109,10 +118,10 @@ export const SiteAdminOutboundRequestsPage: React.FunctionComponent<
             // See http://www.petecorey.com/blog/2019/09/23/apollo-quirks-polling-after-refetching-with-new-variables/
             stopPolling()
             setItems(newItems)
-            refetch({ after: newItems[newItems.length - 1]?.id ?? null })
+            refetch({ after: newItems.at(-1)?.id ?? null })
                 .then(() => {})
                 .catch(() => {})
-            startPolling(OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL)
+            startPolling(OUTBOUND_REQUESTS_PAGE_POLL_INTERVAL_MS)
         }
     }, [data, lastId, items, refetch, startPolling, stopPolling])
 
@@ -137,8 +146,11 @@ export const SiteAdminOutboundRequestsPage: React.FunctionComponent<
     )
 
     return (
-        <div className="site-admin-migrations-page">
+        <div className="site-admin-outbound-requests-page">
             <PageTitle title="Outbound requests - Admin" />
+            <Button variant="secondary" onClick={togglePolling} className="float-right">
+                {polling ? 'Pause updating' : 'Resume updating'}
+            </Button>
             <PageHeader
                 path={[{ text: 'Outbound requests' }]}
                 headingElement="h2"
@@ -146,7 +158,7 @@ export const SiteAdminOutboundRequestsPage: React.FunctionComponent<
                     <>
                         This is the log of recent external requests sent by the Sourcegraph instance. Handy for seeing
                         what's happening between Sourcegraph and other services.{' '}
-                        <strong>The list updates every five seconds.</strong>
+                        {polling ? <strong>The list updates every five seconds.</strong> : null}
                     </>
                 }
                 className="mb-3"
@@ -163,16 +175,14 @@ export const SiteAdminOutboundRequestsPage: React.FunctionComponent<
                         noun="request"
                         pluralNoun="requests"
                         queryConnection={queryOutboundRequests}
-                        nodeComponent={MigrationNode}
+                        nodeComponent={OutboundRequestNode}
                         filters={filters}
-                        history={history}
-                        location={history.location}
                     />
                 ) : (
                     <>
                         <Text>Outbound request logging is currently disabled.</Text>
                         <Text>
-                            Set `outboundRequestLogLimit` to a non-zero value in your{' '}
+                            Set <Code>outboundRequestLogLimit</Code> to a non-zero value in your{' '}
                             <Link to="/site-admin/configuration">site config</Link> to enable it.
                         </Text>
                     </>
@@ -182,8 +192,7 @@ export const SiteAdminOutboundRequestsPage: React.FunctionComponent<
     )
 }
 
-const MigrationNode: React.FunctionComponent<{ node: React.PropsWithChildren<OutboundRequest> }> = ({ node }) => {
-    const roundedSecond = Math.round((node.duration + Number.EPSILON) * 100) / 100
+const OutboundRequestNode: React.FunctionComponent<{ node: React.PropsWithChildren<OutboundRequest> }> = ({ node }) => {
     const [copied, setCopied] = useState(false)
 
     const copyToClipboard = (text: string): void => {
@@ -241,16 +250,16 @@ const MigrationNode: React.FunctionComponent<{ node: React.PropsWithChildren<Out
                         </Text>
                         <Text>
                             <strong>Duration: </strong>
-                            {roundedSecond.toFixed(2)} second{roundedSecond === 1 ? '' : 's'}
+                            {(node.durationMs / 1000).toFixed(2)} second{node.durationMs === 1000 ? '' : 's'}
                         </Text>
                         <Text>
                             <strong>Client created at: </strong>
-                            <Code>{node.creationStackFrame}</Code>
+                            <Code>{formatStackFrameLine(node.creationStackFrame)}</Code>
                         </Text>
                         <Text>
                             <strong>Request made at: </strong>
-                            <Code>{node.callStackFrame}</Code>
                         </Text>
+                        {formatStackFrame(node.callStack)}
                         <Text>
                             <strong>Error: </strong>
                             {node.errorMessage ? node.errorMessage : 'No error'}
@@ -261,11 +270,13 @@ const MigrationNode: React.FunctionComponent<{ node: React.PropsWithChildren<Out
                                     <strong>Request headers:</strong>{' '}
                                 </Text>
                                 <ul>
-                                    {node.requestHeaders.map(header => (
-                                        <li key={header.name}>
-                                            <strong>{header.name}</strong>: {header.values.join(', ')}
-                                        </li>
-                                    ))}
+                                    {[...node.requestHeaders]
+                                        .sort((a, b) => a.name.localeCompare(b.name))
+                                        .map(header => (
+                                            <li key={header.name}>
+                                                <strong>{header.name}</strong>: {header.values.join(', ')}
+                                            </li>
+                                        ))}
                                 </ul>
                             </>
                         ) : (
@@ -277,11 +288,13 @@ const MigrationNode: React.FunctionComponent<{ node: React.PropsWithChildren<Out
                                     <strong>Response headers:</strong>{' '}
                                 </Text>
                                 <ul>
-                                    {node.responseHeaders.map(header => (
-                                        <li key={header.name}>
-                                            <strong>{header.name}</strong>: {header.values.join(', ')}
-                                        </li>
-                                    ))}
+                                    {[...node.responseHeaders]
+                                        .sort((a, b) => a.name.localeCompare(b.name))
+                                        .map(header => (
+                                            <li key={header.name}>
+                                                <strong>{header.name}</strong>: {header.values.join(', ')}
+                                            </li>
+                                        ))}
                                 </ul>
                             </>
                         ) : (
@@ -302,6 +315,39 @@ const MigrationNode: React.FunctionComponent<{ node: React.PropsWithChildren<Out
             </div>
         </React.Fragment>
     )
+}
+
+function formatStackFrame(callStack: string): React.ReactNode {
+    const lines = callStack.split('\n')
+
+    return (
+        <>
+            <ul>{lines.map(formatStackFrameLine)}</ul>
+        </>
+    )
+}
+
+function formatStackFrameLine(line: string): React.ReactNode {
+    const match = line.match(/(.*):(\d+) \(Function: (.*)\)/)
+    if (!match) {
+        return line
+    }
+    const [, fileName, lineIndex, functionName] = match
+    return (
+        <li key={`${fileName}:${lineIndex}`}>
+            <Code>
+                <Link to={buildSourcegraphUrl(fileName, parseInt(lineIndex, 10))} target="_blank" rel="noopener">
+                    {fileName}:{lineIndex}
+                </Link>{' '}
+                (Function: {functionName})
+            </Code>
+        </li>
+    )
+}
+
+function buildSourcegraphUrl(fileName: string, lineIndex: number): string {
+    const revision = parseProductReference(window.context.version)
+    return `https://sourcegraph.com/github.com/sourcegraph/sourcegraph@${revision}/-/blob/${fileName}?L${lineIndex}`
 }
 
 const SimplePopover: React.FunctionComponent<{ label: string; children: ReactNode }> = ({ label, children }) => {
@@ -333,7 +379,7 @@ function matchesString(request: OutboundRequest, query: string): boolean {
         request.statusCode.toString().includes(lQuery) ||
         request.errorMessage.toLowerCase().includes(lQuery) ||
         request.creationStackFrame.toLowerCase().includes(lQuery) ||
-        request.callStackFrame.toLowerCase().includes(lQuery) ||
+        request.callStack.toLowerCase().includes(lQuery) ||
         request.requestHeaders?.some(
             header =>
                 header.name.toLowerCase().includes(lQuery) ||

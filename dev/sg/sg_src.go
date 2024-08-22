@@ -4,13 +4,15 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"os/exec"
 
+	"github.com/urfave/cli/v2"
+
+	"github.com/sourcegraph/sourcegraph/dev/sg/internal/category"
 	"github.com/sourcegraph/sourcegraph/dev/sg/internal/secrets"
 	"github.com/sourcegraph/sourcegraph/dev/sg/internal/std"
-	"github.com/sourcegraph/sourcegraph/dev/sg/internal/usershell"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/lib/output"
-	"github.com/urfave/cli/v2"
 )
 
 type srcInstance struct {
@@ -27,14 +29,14 @@ var srcInstanceCommand = &cli.Command{
 	Name:      "src-instance",
 	UsageText: "sg src-instance [command]",
 	Usage:     "Interact with Sourcegraph instances that 'sg src' will use",
-	Category:  CategoryDev,
+	Category:  category.Dev,
 	Subcommands: []*cli.Command{
 		{
 			Name:      "register",
 			Usage:     "Register (or edit an existing) Sourcegraph instance to target with src-cli",
 			UsageText: "sg src instance register [name] [endpoint]",
 			Action: func(cmd *cli.Context) error {
-				store, sc, err := getSrcInstances(cmd.Context, std.Out)
+				store, sc, err := getSrcInstances(cmd.Context)
 				if err != nil {
 					return errors.Wrap(err, "failed to read existing instances")
 				}
@@ -78,14 +80,14 @@ var srcInstanceCommand = &cli.Command{
 			Name:  "use",
 			Usage: "Set current src-cli instance to use with 'sg src'",
 			Action: func(cmd *cli.Context) error {
-				store, sc, err := getSrcInstances(cmd.Context, std.Out)
+				store, sc, err := getSrcInstances(cmd.Context)
 				if err != nil {
 					return err
 				}
 				name := cmd.Args().First()
 				instance, ok := sc.Instances[name]
 				if !ok {
-					std.Out.WriteFailuref("Instance not found, register one with 'sg src register-instance'")
+					std.Out.WriteFailuref("Instance not found, register one with 'sg src-instance register'")
 					return errors.New("instance not found")
 				}
 				sc.Current = name
@@ -100,7 +102,7 @@ var srcInstanceCommand = &cli.Command{
 			Name:  "list",
 			Usage: "List registered instances for src-cli",
 			Action: func(cmd *cli.Context) error {
-				_, sc, err := getSrcInstances(cmd.Context, std.Out)
+				_, sc, err := getSrcInstances(cmd.Context)
 				if err != nil {
 					return err
 				}
@@ -122,34 +124,34 @@ var srcCommand = &cli.Command{
 	Name:      "src",
 	UsageText: "sg src [src-cli args]\nsg src help # get src-cli help",
 	Usage:     "Run src-cli on a given instance defined with 'sg src-instance'",
-	Category:  CategoryDev,
+	Category:  category.Dev,
 	Action: func(cmd *cli.Context) error {
-		_, sc, err := getSrcInstances(cmd.Context, std.Out)
+		_, sc, err := getSrcInstances(cmd.Context)
 		if err != nil {
 			return err
 		}
 		instanceName := sc.Current
 		if instanceName == "" {
-			std.Out.WriteFailuref("Instance not found, register one with 'sg src register-instance'")
+			std.Out.WriteFailuref("Instance not found, register one with 'sg src-instance register'")
 			return errors.New("set an instance with sg src-instance use [instance-name]")
 		}
 		instance, ok := sc.Instances[instanceName]
 		if !ok {
-			std.Out.WriteFailuref("Instance not found, register one with 'sg src register-instance'")
+			std.Out.WriteFailuref("Instance not found, register one with 'sg src-instance register'")
 			return errors.New("instance not found")
 		}
 
-		c := usershell.Command(cmd.Context, append([]string{"src"}, cmd.Args().Slice()...)...)
-		c = c.Env(map[string]string{
-			"SRC_ACCESS_TOKEN": instance.AccessToken,
-			"SRC_ENDPOINT":     instance.Endpoint,
-		})
-		return c.Run().Stream(os.Stdout)
+		c := exec.CommandContext(cmd.Context, "src", cmd.Args().Slice()...)
+		c.Env = append(c.Environ(), "SRC_ACCESS_TOKEN="+instance.AccessToken, "SRC_ENDPOINT="+instance.Endpoint)
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		c.Stdin = os.Stdin
+		return c.Run()
 	},
 }
 
 // getSrcInstances retrieves src instances configuration from the secrets store
-func getSrcInstances(ctx context.Context, out *std.Output) (*secrets.Store, *srcSecrets, error) {
+func getSrcInstances(ctx context.Context) (*secrets.Store, *srcSecrets, error) {
 	sec, err := secrets.FromContext(ctx)
 	if err != nil {
 		return nil, nil, err

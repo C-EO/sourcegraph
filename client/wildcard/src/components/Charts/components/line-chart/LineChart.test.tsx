@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 
 import { LineChart } from './LineChart'
 import { FLAT_SERIES } from './story/mocks'
@@ -8,11 +9,21 @@ const defaultArgs: RenderChartArgs = { series: FLAT_SERIES }
 interface RenderChartArgs {
     series: typeof FLAT_SERIES
 }
-const renderChart = ({ series }: RenderChartArgs) => render(<LineChart width={400} height={400} series={series} />)
+
+/**
+ * Test padding set 1px to the left and bottom values in order to force
+ * content sync appearance. In browser runtime this padding is calculated
+ * based on chart axes sizes. In test environment size measurement API
+ * doesn't work, we have to set padding manually in order to force chart
+ * content appearance. See SVGContent component for more context.
+ */
+const TEST_PADDING = { top: 16, right: 18, bottom: 1, left: 1 }
+
+const renderChart = ({ series }: RenderChartArgs) =>
+    render(<LineChart width={400} height={400} series={series} padding={TEST_PADDING} />)
 
 describe('LineChart', () => {
     // Non-exhaustive smoke tests to check that the chart renders correctly
-    // All other general rendering tests are covered by chromatic
     describe('should render', () => {
         it('empty series', () => {
             renderChart({ ...defaultArgs, series: [] })
@@ -60,9 +71,9 @@ describe('LineChart', () => {
 
             // Spot checking multiple points
             // related issue https://github.com/sourcegraph/sourcegraph/issues/38304
-            expect(point00).toHaveAttribute('href', 'https://google.com/search')
-            expect(point01).toHaveAttribute('href', 'https://google.com/search')
-            expect(point02).toHaveAttribute('href', 'https://google.com/search')
+            expect(point00).toHaveAttribute('href', 'https://yandex.com/search')
+            expect(point01).toHaveAttribute('href', 'https://yandex.com/search')
+            expect(point02).toHaveAttribute('href', 'https://yandex.com/search')
         })
     })
 })

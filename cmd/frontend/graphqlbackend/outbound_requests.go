@@ -2,21 +2,29 @@ package graphqlbackend
 
 import (
 	"context"
+	"math"
+	"sync"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
-	"github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend/graphqlutil"
+
+	"github.com/sourcegraph/log"
+
+	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/auth"
+	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/featureflag"
 	"github.com/sourcegraph/sourcegraph/internal/gqlutil"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 )
 
 type outboundRequestsArgs struct {
-	After *graphql.ID
+	First *int32
+	After *string
 }
 
-type outboundRequestResolver struct {
+type OutboundRequestResolver struct {
 	req *types.OutboundRequestLogItem
 }
 
@@ -25,12 +33,18 @@ type HttpHeaders struct {
 	values []string
 }
 
-// accessTokenConnectionResolver resolves a list of access tokens.
+// outboundRequestConnectionResolver resolves a list of access tokens.
 //
 // 🚨 SECURITY: When instantiating an outboundRequestConnectionResolver value, the caller MUST check
 // permissions.
 type outboundRequestConnectionResolver struct {
+	first *int32
 	after string
+
+	// cache results because they are used by multiple fields
+	once      sync.Once
+	resolvers []*OutboundRequestResolver
+	err       error
 }
 
 func (r *schemaResolver) OutboundRequests(ctx context.Context, args *outboundRequestsArgs) (*outboundRequestConnectionResolver, error) {
@@ -39,9 +53,10 @@ func (r *schemaResolver) OutboundRequests(ctx context.Context, args *outboundReq
 		return nil, err
 	}
 
+	// Parse `after` argument
 	var after string
 	if args.After != nil {
-		err := relay.UnmarshalSpec(*args.After, &after)
+		err := relay.UnmarshalSpec(graphql.ID(*args.After), &after)
 		if err != nil {
 			return nil, err
 		}
@@ -49,83 +64,124 @@ func (r *schemaResolver) OutboundRequests(ctx context.Context, args *outboundReq
 		after = ""
 	}
 
+	if featureflag.FromContext(ctx).GetBoolOr("auditlog-expansion", false) {
+
+		// Log an even when Outbound requests are viewed
+		if err := r.db.SecurityEventLogs().LogSecurityEvent(ctx, database.SecurityEventNameOutboundReqViewed, "", uint32(actor.FromContext(ctx).UID), "", "BACKEND", args); err != nil {
+			r.logger.Warn("Error logging security event", log.Error(err))
+		}
+	}
 	return &outboundRequestConnectionResolver{
+		first: args.First,
 		after: after,
 	}, nil
 }
 
-func (r *schemaResolver) outboundRequestByID(ctx context.Context, id graphql.ID) (*outboundRequestResolver, error) {
+func (r *schemaResolver) outboundRequestByID(ctx context.Context, id graphql.ID) (*OutboundRequestResolver, error) {
 	// 🚨 SECURITY: Only site admins may view outbound requests.
 	if err := auth.CheckCurrentUserIsSiteAdmin(ctx, r.db); err != nil {
 		return nil, err
 	}
 
 	var key string
-	err := relay.UnmarshalSpec(id, key)
+	err := relay.UnmarshalSpec(id, &key)
 	if err != nil {
 		return nil, err
+	}
+
+	if featureflag.FromContext(ctx).GetBoolOr("auditlog-expansion", false) {
+
+		// Log an even when Outbound requests are viewed
+		if err := r.db.SecurityEventLogs().LogSecurityEvent(ctx, database.SecurityEventNameOutboundReqViewed, "", uint32(actor.FromContext(ctx).UID), "", "BACKEND", graphql.ID(key)); err != nil {
+			r.logger.Warn("Error logging security event", log.Error(err))
+		}
 	}
 	item, _ := httpcli.GetOutboundRequestLogItem(key)
-	return &outboundRequestResolver{req: item}, nil
+	return &OutboundRequestResolver{req: item}, nil
 }
 
-func (r *outboundRequestConnectionResolver) Nodes(ctx context.Context) ([]*outboundRequestResolver, error) {
-	requests, err := httpcli.GetAllOutboundRequestLogItemsAfter(ctx, r.after)
+func (r *outboundRequestConnectionResolver) Nodes(ctx context.Context) ([]*OutboundRequestResolver, error) {
+	resolvers, err := r.compute(ctx)
+
 	if err != nil {
 		return nil, err
 	}
 
-	resolvers := make([]*outboundRequestResolver, 0, len(requests))
-	for _, item := range requests {
-		resolvers = append(resolvers, &outboundRequestResolver{req: item})
+	if r.first != nil && *r.first > -1 && len(resolvers) > int(*r.first) {
+		resolvers = resolvers[:*r.first]
 	}
 
 	return resolvers, nil
 }
 
 func (r *outboundRequestConnectionResolver) TotalCount(ctx context.Context) (int32, error) {
-	requests, err := httpcli.GetAllOutboundRequestLogItemsAfter(ctx, r.after)
+	resolvers, err := r.compute(ctx)
 	if err != nil {
 		return 0, err
 	}
-	return int32(len(requests)), nil
+	return int32(len(resolvers)), nil
 }
 
-func (r *outboundRequestConnectionResolver) PageInfo() (*graphqlutil.PageInfo, error) {
-	return graphqlutil.HasNextPage(false), nil
+func (r *outboundRequestConnectionResolver) PageInfo(ctx context.Context) (*gqlutil.PageInfo, error) {
+	resolvers, err := r.compute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.first != nil && *r.first > -1 && len(resolvers) > int(*r.first) {
+		return gqlutil.NextPageCursor(string(resolvers[*r.first-1].ID())), nil
+	}
+	return gqlutil.HasNextPage(false), nil
 }
 
-func (r *outboundRequestResolver) ID() graphql.ID {
+func (r *outboundRequestConnectionResolver) compute(ctx context.Context) ([]*OutboundRequestResolver, error) {
+	r.once.Do(func() {
+		requests, err := httpcli.GetOutboundRequestLogItems(ctx, r.after)
+		if err != nil {
+			r.resolvers, r.err = nil, err
+		}
+
+		resolvers := make([]*OutboundRequestResolver, 0, len(requests))
+		for _, item := range requests {
+			resolvers = append(resolvers, &OutboundRequestResolver{req: item})
+		}
+
+		r.resolvers, r.err = resolvers, nil
+	})
+	return r.resolvers, r.err
+}
+
+func (r *OutboundRequestResolver) ID() graphql.ID {
 	return relay.MarshalID("OutboundRequest", r.req.ID)
 }
 
-func (r *outboundRequestResolver) StartedAt() gqlutil.DateTime {
+func (r *OutboundRequestResolver) StartedAt() gqlutil.DateTime {
 	return gqlutil.DateTime{Time: r.req.StartedAt}
 }
 
-func (r *outboundRequestResolver) Method() string { return r.req.Method }
+func (r *OutboundRequestResolver) Method() string { return r.req.Method }
 
-func (r *outboundRequestResolver) URL() string { return r.req.URL }
+func (r *OutboundRequestResolver) URL() string { return r.req.URL }
 
-func (r *outboundRequestResolver) RequestHeaders() ([]*HttpHeaders, error) {
+func (r *OutboundRequestResolver) RequestHeaders() ([]*HttpHeaders, error) {
 	return newHttpHeaders(r.req.RequestHeaders)
 }
 
-func (r *outboundRequestResolver) RequestBody() string { return r.req.RequestBody }
+func (r *OutboundRequestResolver) RequestBody() string { return r.req.RequestBody }
 
-func (r *outboundRequestResolver) StatusCode() int32 { return r.req.StatusCode }
+func (r *OutboundRequestResolver) StatusCode() int32 { return r.req.StatusCode }
 
-func (r *outboundRequestResolver) ResponseHeaders() ([]*HttpHeaders, error) {
+func (r *OutboundRequestResolver) ResponseHeaders() ([]*HttpHeaders, error) {
 	return newHttpHeaders(r.req.ResponseHeaders)
 }
 
-func (r *outboundRequestResolver) Duration() float64 { return r.req.Duration }
+func (r *OutboundRequestResolver) DurationMs() int32 { return int32(math.Round(r.req.Duration * 1000)) }
 
-func (r *outboundRequestResolver) ErrorMessage() string { return r.req.ErrorMessage }
+func (r *OutboundRequestResolver) ErrorMessage() string { return r.req.ErrorMessage }
 
-func (r *outboundRequestResolver) CreationStackFrame() string { return r.req.CreationStackFrame }
+func (r *OutboundRequestResolver) CreationStackFrame() string { return r.req.CreationStackFrame }
 
-func (r *outboundRequestResolver) CallStackFrame() string { return r.req.CallStackFrame }
+func (r *OutboundRequestResolver) CallStack() string { return r.req.CallStackFrame }
 
 func newHttpHeaders(headers map[string][]string) ([]*HttpHeaders, error) {
 	result := make([]*HttpHeaders, 0, len(headers))

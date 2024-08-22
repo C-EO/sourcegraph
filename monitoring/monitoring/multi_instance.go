@@ -9,18 +9,12 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/sourcegraph/sourcegraph/lib/errors"
+	"github.com/sourcegraph/sourcegraph/monitoring/monitoring/internal/grafana"
 )
 
 func renderMultiInstanceDashboard(dashboards []*Dashboard, groupings []string) (*grafanasdk.Board, error) {
-	board := sdk.NewBoard("Multi-instance overviews")
-	board.AddTags("builtin")
-
-	board.Timezone = "utc"
-	board.Timepicker.RefreshIntervals = []string{"5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"}
-	board.Time.From = "now-6h"
-	board.Time.To = "now"
-	board.SharedCrosshair = true
-	board.Editable = false
+	board := grafana.NewBoard("multi-instance-overviews", "Multi-instance overviews",
+		[]string{"multi-instance", "generated"})
 
 	var variableMatchers []*labels.Matcher
 	for _, g := range groupings {
@@ -49,12 +43,13 @@ func renderMultiInstanceDashboard(dashboards []*Dashboard, groupings []string) (
 		variableMatchers = append(variableMatchers, m)
 	}
 
-	for _, d := range dashboards {
-		var row *sdk.Row
+	var offsetY int
+	for dashboardIndex, d := range dashboards {
+		var row *sdk.Panel
 		var addDashboardRow sync.Once
-		for _, g := range d.Groups {
+		for groupIndex, g := range d.Groups {
 			for _, r := range g.Rows {
-				for _, o := range r {
+				for observableIndex, o := range r {
 					if !o.MultiInstance {
 						continue
 					}
@@ -62,22 +57,32 @@ func renderMultiInstanceDashboard(dashboards []*Dashboard, groupings []string) (
 					// Only add row if this dashboard has a multi instance panel, and only
 					// do it once per dashboard
 					addDashboardRow.Do(func() {
-						row = board.AddRow(d.Title)
-						row.ShowTitle = true
-						row.Collapse = true // avoid crazy loading times
+						offsetY++
+						row = grafana.NewRowPanel(offsetY, d.Title)
+						row.Collapsed = true // avoid crazy loading times
+						board.Panels = append(board.Panels, row)
 					})
 
-					// TODO make this size correctly in this context and output a valid
-					// dashboard, right now it isn't quite right
+					// Generate the panel with groupings and variables
+					offsetY++
 					panel, err := o.renderPanel(d, panelManipulationOptions{
 						injectGroupings:     groupings,
 						injectLabelMatchers: variableMatchers,
-					}, nil)
+					}, &panelRenderOptions{
+						// these indexes are only used for identification
+						groupIndex: dashboardIndex,
+						rowIndex:   groupIndex,
+						panelIndex: observableIndex,
+
+						panelWidth:  24,      // max-width
+						panelHeight: 10,      // tall dashboards!
+						offsetY:     offsetY, // total index added
+					})
 					if err != nil {
 						return nil, errors.Wrapf(err, "render panel for %q", o.Name)
 					}
 
-					row.Add(panel)
+					row.RowPanel.Panels = append(row.RowPanel.Panels, *panel)
 				}
 			}
 		}

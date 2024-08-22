@@ -1,35 +1,35 @@
 import {
     createContext,
-    Dispatch,
-    FC,
-    PropsWithChildren,
-    ReactElement,
-    ReactNode,
-    SetStateAction,
-    SVGProps,
+    type Dispatch,
+    type FC,
+    forwardRef,
+    type ReactElement,
+    type ReactNode,
+    type SetStateAction,
+    type SVGProps,
     useContext,
     useMemo,
     useRef,
     useState,
 } from 'react'
 
-import { AxisScale, TickRendererProps } from '@visx/axis'
+import type { AxisScale, TickRendererProps } from '@visx/axis'
 import { Group } from '@visx/group'
 import { scaleLinear } from '@visx/scale'
-import { ScaleTime } from 'd3-scale'
+import type { ScaleTime } from 'd3-scale'
 import { noop } from 'lodash'
 import { useMergeRefs } from 'use-callback-ref'
 import useResizeObserver from 'use-resize-observer'
 
 // In order to resolve cyclic deps in tests
 // see https://github.com/sourcegraph/sourcegraph/pull/40209#pullrequestreview-1069334480
-import { createRectangle, EMPTY_RECTANGLE, Rectangle } from '../../../Popover'
+import { createRectangle, EMPTY_RECTANGLE, type Rectangle } from '../../../Popover'
 
 import { AxisBottom, AxisLeft } from './axis/Axis'
-import { getMaxTickWidth, Tick, TickProps } from './axis/Tick'
-import { GetScaleTicksOptions, getXScaleTicks } from './axis/tick-formatters'
+import { getMaxTickWidth, Tick, type TickProps } from './axis/Tick'
+import { type GetScaleTicksOptions, getXScaleTicks } from './axis/tick-formatters'
 
-const DEFAULT_PADDING = { top: 16, right: 36, bottom: 20, left: 0 }
+const DEFAULT_PADDING = { top: 16, right: 36, bottom: 0, left: 0 }
 
 interface Padding {
     top: number
@@ -71,7 +71,7 @@ interface SvgRootProps extends SVGProps<SVGSVGElement> {
  * calculates and prepares all important canvas measurements for x/y-axis,
  * content and other chart elements.
  */
-export const SvgRoot: FC<PropsWithChildren<SvgRootProps>> = props => {
+export const SvgRoot = forwardRef<SVGSVGElement, SvgRootProps>(function SvgRoot(props, ref) {
     const {
         width,
         height,
@@ -82,7 +82,7 @@ export const SvgRoot: FC<PropsWithChildren<SvgRootProps>> = props => {
         ...attributes
     } = props
 
-    const rootRef = useRef<SVGSVGElement>(null)
+    const rootRef = useMergeRefs<SVGSVGElement>([ref])
     const [padding, setPadding] = useState<Padding>(propPadding)
 
     const contentRectangle = useMemo(
@@ -96,15 +96,15 @@ export const SvgRoot: FC<PropsWithChildren<SvgRootProps>> = props => {
         [width, height, padding]
     )
 
-    const yScale = useMemo(() => yOriginalScale.copy().range([contentRectangle.height, 0]) as AxisScale, [
-        yOriginalScale,
-        contentRectangle,
-    ])
+    const yScale = useMemo(
+        () => yOriginalScale.copy().range([contentRectangle.height, 0]) as AxisScale,
+        [yOriginalScale, contentRectangle]
+    )
 
-    const xScale = useMemo(() => xOriginalScale.copy().range([0, contentRectangle.width]) as AxisScale, [
-        xOriginalScale,
-        contentRectangle,
-    ])
+    const xScale = useMemo(
+        () => xOriginalScale.copy().range([0, contentRectangle.width]) as AxisScale,
+        [xOriginalScale, contentRectangle]
+    )
 
     const context = useMemo<SVGRootLayout>(
         () => ({
@@ -116,17 +116,17 @@ export const SvgRoot: FC<PropsWithChildren<SvgRootProps>> = props => {
             svgElement: rootRef.current,
             setPadding,
         }),
-        [width, height, contentRectangle, xScale, yScale]
+        [width, height, xScale, yScale, contentRectangle, rootRef]
     )
 
     return (
         <SVGRootContext.Provider value={context}>
-            <svg {...attributes} ref={rootRef} width={width} height={height} tabIndex={-1}>
+            <svg {...attributes} ref={rootRef} width={width} height={height} tabIndex={0}>
                 {children}
             </svg>
         </SVGRootContext.Provider>
     )
-}
+}) as FC<SvgRootProps>
 
 interface SvgAxisLeftProps {
     pixelsPerTick?: number
@@ -257,9 +257,15 @@ interface SvgContentProps<XScale extends AxisScale | ScaleTime<any, any>, YScale
  */
 export function SvgContent<XScale extends AxisScale = AxisScale, YScale extends AxisScale = AxisScale>(
     props: SvgContentProps<XScale, YScale>
-): ReactElement {
+): ReactElement | null {
     const { children } = props
     const { content, xScale, yScale } = useContext(SVGRootContext)
+
+    // Render content only when we already have measured axis (left and bottom)
+    // sizes in order to avoid content shift.
+    if (content.left * content.bottom === 0) {
+        return null
+    }
 
     return (
         <Group top={content.top} left={content.left} width={content.width} height={content.height}>

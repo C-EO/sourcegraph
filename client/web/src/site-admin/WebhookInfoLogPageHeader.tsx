@@ -6,7 +6,7 @@ import classNames from 'classnames'
 import { useQuery } from '@sourcegraph/http-client'
 import { Button, Icon } from '@sourcegraph/wildcard'
 
-import { WebhookByIDLogPageHeaderResult } from '../graphql-operations'
+import type { WebhookByIDLogPageHeaderResult } from '../graphql-operations'
 
 import { WEBHOOK_BY_ID_LOG_PAGE_HEADER } from './webhooks/backend'
 import { PerformanceGauge } from './webhooks/PerformanceGauge'
@@ -41,7 +41,7 @@ export const WebhookInfoLogPageHeader: React.FunctionComponent<React.PropsWithCh
                     label="recent error"
                 />
             </div>
-            <div className={styles.buttons}>
+            <div className={styles.button}>
                 <Button variant="danger" onClick={onErrorToggle} outline={!onlyErrors}>
                     <Icon
                         className={classNames(styles.icon, onlyErrors && styles.enabled)}
@@ -49,9 +49,6 @@ export const WebhookInfoLogPageHeader: React.FunctionComponent<React.PropsWithCh
                         svgPath={mdiAlertCircle}
                     />
                     <span className="ml-1">Show errors</span>
-                </Button>
-                <Button variant="success" className="ml-2">
-                    <span className="ml-1">Send test event</span>
                 </Button>
             </div>
         </div>

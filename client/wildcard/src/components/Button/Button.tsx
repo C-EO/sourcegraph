@@ -1,11 +1,11 @@
-import { MouseEvent, ButtonHTMLAttributes, forwardRef } from 'react'
+import { type MouseEvent, type ButtonHTMLAttributes, forwardRef } from 'react'
 
 import classNames from 'classnames'
 
 import { useWildcardTheme } from '../../hooks'
-import { ForwardReferenceComponent } from '../../types'
+import type { ForwardReferenceComponent } from '../../types'
 
-import { BUTTON_VARIANTS, BUTTON_SIZES, BUTTON_DISPLAY } from './constants'
+import type { BUTTON_VARIANTS, BUTTON_SIZES, BUTTON_DISPLAY } from './constants'
 import { getButtonClassName } from './utils'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -67,9 +67,15 @@ export const Button = forwardRef(
         const brandedButtonClassname = getButtonClassName({ variant, outline, display, size })
 
         const handleClick = (event: MouseEvent<HTMLButtonElement>): void => {
-            if (!disabled) {
-                onClick?.(event)
+            if (disabled) {
+                // Prevent any native button element behaviour, such as submit
+                // functionality if the button is used within form elements without
+                // type attribute (or with explicitly set "submit" type.
+                event.preventDefault()
+                return
             }
+
+            onClick?.(event)
         }
 
         return (
